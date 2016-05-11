@@ -191,7 +191,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
         llgps.setOrientation(LinearLayout.HORIZONTAL);
 
         btGPS = new Button(this);
-        btGPS.setText("Record New\nData Point");
+        btGPS.setText("Record\nData Point");
         btGPS.setLayoutParams(new LayoutParams(-2, -2));
         btGPS.setOnClickListener(new OnClickListener() {
             public void onClick(View arg0) {
@@ -436,7 +436,7 @@ public void DeleteEverything(){
 
     public void onLocationChanged(Location thisLocation) {
         if (!GPSActive) {                   //Location changed and GPSActive=false...
-            tvCurrentLocation.setText("   GPS ready to record Data Points.");
+            tvCurrentLocation.setText("   Your GPS is ready to Record Data Points.");
             if (!GPSFirstCallback) {
                 GPSFirstCallback = true;
                 G.WTL("Locations.onLocationChanged First Callback");

@@ -79,20 +79,18 @@ public class Splash extends AppCompatActivity {
 
         G.db = openOrCreateDatabase(G.currentdirectory + "/ADAK.db", Context.MODE_PRIVATE, null);
         ss = "select count(*) from sqlite_master where name = 'FieldCombo' and type='table'";
-        if (G.gdbSingle(ss).equals("0")) {
+        if (G.gdbSingle(ss).equals("1")) {
             G.gdbExecute("drop table if exists ValuePairs");
             G.gdbExecute("drop table if exists FieldCombo");
             G.gdbExecute("drop table if exists ObjectCombo");
             G.gdbExecute("drop table if exists GPSStack");
             G.gdbExecute("Create table ValuePairs ( vName varchar(50), vValue varchar(50) )");
             G.gdbExecute("Create table FieldCombo ( fName varchar(50) )");
-            G.gdbExecute("Insert into FieldCombo (fName) select 'Field#1'");
-            G.gdbExecute("Insert into FieldCombo (fName) select '~Add Field...'");
+            G.gdbExecute("Insert into FieldCombo (fName) select 'Canada'");
             G.gdbExecute("Create table ObjectCombo ( oName varchar(50) )");
-            G.gdbExecute("Insert into ObjectCombo (oName) select '~Add Object...'");
+            G.gdbExecute("Insert into ObjectCombo (oName) select 'Toronto'");
             G.gdbExecute("Create table GPSStack ( gwhen datetime, gfield varchar(50), gobject varchar(50), glat double, glong double, galt int, gacc int )");
-            G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) select datetime(), 'f1','o1', 42.7, -73.6, 100, 10");
-            G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) select datetime(), 'f2','o2', 42.7212, -73.6501, 101, 101");
+            G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) select datetime(), 'Canada','Toronto',43.6532, -79.3832, 10, 10");
         }
 
         G.gdbExecute("drop table if exists LocationsMenuCombo");
@@ -110,11 +108,12 @@ public class Splash extends AppCompatActivity {
         G.gdbExecute("drop table if exists GoogleMapsMenuCombo");
         G.gdbExecute("Create table GoogleMapsMenuCombo (mName varchar(50) )");
         G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'Menu'");
-        G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'DisplayField'");
-        G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'DisplayObject'");
+        G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'MapField'");
+        G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'MapObject'");
 
         G.userid = G.gdbSingle("select vValue from ValuePairs where vName='userid'");
         G.password = G.gdbSingle("select vValue from ValuePairs where vName='password'");
+
         G.gdbFillArrayList("select * from FieldCombo order by fName", G.FieldCombo);
         G.gdbFillArrayList("select * from ObjectCombo order by oName", G.ObjectCombo);
         G.gdbFillArrayList("select * from LocationsMenuCombo", G.LocationsMenuCombo);

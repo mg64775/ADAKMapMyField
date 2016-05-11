@@ -125,7 +125,7 @@ public class G {
     public static int gdbFillArrayList(String statement, ArrayList ar) {
         WTL("G.gdbFillArrayList " + statement);
         try {
-            Cursor cursor = db.rawQuery(statement.toLowerCase(), null);
+            Cursor cursor = db.rawQuery(statement, null);
             int colk = cursor.getColumnCount();
             ar.clear();
             for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {

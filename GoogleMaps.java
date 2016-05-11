@@ -4,7 +4,12 @@ import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.design.widget.CoordinatorLayout;
+import android.support.design.widget.FloatingActionButton;
 import android.util.DisplayMetrics;
+import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
@@ -21,6 +26,10 @@ import android.widget.Toast;
 import java.util.HashMap;
 
 public class GoogleMaps extends Activity implements HTTPInterface {
+
+    ScaleGestureDetector scaleGestureDetector;
+    boolean Pinch = true;
+
     LinearLayout ll;
     LinearLayout llh;
     LinearLayout llv;
@@ -33,9 +42,7 @@ public class GoogleMaps extends Activity implements HTTPInterface {
     Spinner spMenu;
     ArrayAdapter<String> spMenuAdapter;
     String spMenuSelection;
-    Button btPlus;
-    Button btMinus;
-    int zoom;
+    int zoom = 0;
     ImageView iv;
     Bitmap bm;
     HashMap hm;
@@ -43,6 +50,8 @@ public class GoogleMaps extends Activity implements HTTPInterface {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         G.WTL("GoogleMaps.onCreate Starts");
+
+        scaleGestureDetector = new ScaleGestureDetector(this, new MyOnScaleGestureListener());
 
         ll = new LinearLayout(this);
         ll.setOrientation(LinearLayout.VERTICAL);
@@ -67,7 +76,6 @@ public class GoogleMaps extends Activity implements HTTPInterface {
                 zoom = 0;
                 CallGoogleMaps("");
             }
-
             public void onNothingSelected(AdapterView<?> parentView) {
             }
         });
@@ -90,30 +98,6 @@ public class GoogleMaps extends Activity implements HTTPInterface {
         });
         llh.addView(spObject);
 
-        btPlus = new Button(this);
-        btPlus.setWidth(0);
-        btPlus.setLayoutParams(new LayoutParams(-2, -2));
-        btPlus.setText("+");
-        btPlus.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                zoom = zoom == 0 ? 14 : ++zoom;
-                CallGoogleMaps("");
-            }
-        });
-        llh.addView(btPlus);
-
-        btMinus = new Button(this);
-        btMinus.setWidth(0);
-        btMinus.setLayoutParams(new LayoutParams(-2, -2));
-        btMinus.setText("-");
-        btMinus.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                zoom = zoom == 0 ? 14 : --zoom;
-                CallGoogleMaps("");
-            }
-        });
-        llh.addView(btMinus);
-
         spMenu = new Spinner(this);
         spMenu.setLayoutParams(new LayoutParams(-1, -2, 1f));
         spMenuAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.GoogleMapsMenuCombo);
@@ -123,10 +107,10 @@ public class GoogleMaps extends Activity implements HTTPInterface {
                 spMenuSelection = (String) parentView.getSelectedItem();
                 parentView.setSelection(0);
                 switch (spMenuSelection) {
-                    case "DisplayObject":
+                    case "MapObject":
                         zoom = 0;
                         CallGoogleMaps((String) spObject.getSelectedItem());
-                    case "DisplayField":
+                    case "MapField":
                         zoom = 0;
                         CallGoogleMaps("");
                 }
@@ -146,8 +130,39 @@ public class GoogleMaps extends Activity implements HTTPInterface {
         ll.addView(llv);
 
         setContentView(ll);
-        zoom = 0;
         CallGoogleMaps("");
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        scaleGestureDetector.onTouchEvent(event);
+        return true;
+    }
+
+    public class MyOnScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+
+        public boolean onScale(ScaleGestureDetector detector) {
+
+            float scaleFactor = detector.getScaleFactor();
+            if (scaleFactor >= 1) {
+                Pinch = false;
+            } else {
+                Pinch = true;
+            }
+            return true;
+        }
+
+        @Override
+        public boolean onScaleBegin(ScaleGestureDetector detector) {
+            return true;
+        }
+
+        @Override
+        public void onScaleEnd(ScaleGestureDetector detector) {
+            zoom = zoom == 0 ? 10 : (Pinch == true ? --zoom : ++zoom);
+            CallGoogleMaps("");
+            return;
+        }
     }
 
     public String q(String phrase) {
@@ -173,7 +188,7 @@ public class GoogleMaps extends Activity implements HTTPInterface {
 
         G.HTTPAction = "maps";
         G.HTTPParms = markers + (zoom == 0 ? "" : "&zoom=" + Integer.valueOf(zoom)) +
-                "&size=640x640&scale=2&maptype=hybrid";  // &key=AIzaSyANrV0xBbg7vzH1McZHNFHgWAn2YnhNJec";
+                "&size=640x640&scale=2&maptype=hybrid"; //&key=AIzaSyANrV0xBbg7vzH1McZHNFHgWAn2YnhNJec";
         WTS("Waiting for map, zoom=" + (zoom == 0 ? "default" : zoom));
 
         G.WebAsync WhoCares = new G.WebAsync();

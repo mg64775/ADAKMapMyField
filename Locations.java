@@ -11,11 +11,9 @@ import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.media.Image;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.Space;
-import android.view.Gravity;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
@@ -23,9 +21,7 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.LinearLayout.LayoutParams;
 import android.widget.ListView;
@@ -33,8 +29,6 @@ import android.widget.SimpleAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import org.w3c.dom.Text;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -102,7 +96,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
 
         LocationField = (String) G.FieldCombo.get(0);
         spField = new Spinner(this);
-        spField.setLayoutParams(new LayoutParams(-2, -2));
+        spField.setLayoutParams(new LayoutParams(-1, -2, 1));
         spFieldAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.FieldCombo);
         spField.setAdapter(spFieldAdapter);
         spField.setOnItemSelectedListener(new OnItemSelectedListener() {
@@ -120,7 +114,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
 
         LocationObject = (String) G.ObjectCombo.get(0);
         spObject = new Spinner(this);
-        spObject.setLayoutParams(new LayoutParams(-2, -2));
+        spObject.setLayoutParams(new LayoutParams(-1, -2, 1));
         spObjectAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.ObjectCombo);
         spObject.setAdapter(spObjectAdapter);
         spObject.setOnItemSelectedListener(new OnItemSelectedListener() {
@@ -137,7 +131,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
         llspinners.addView(spObject);
 
         spMenu = new Spinner(this);
-        spMenu.setLayoutParams(new LayoutParams(-2, -2));
+        spMenu.setLayoutParams(new LayoutParams(-1, -2, 1));
         spMenuAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.LocationsMenuCombo);
         spMenu.setAdapter(spMenuAdapter);
         spMenu.setOnItemSelectedListener(new OnItemSelectedListener() {
@@ -235,9 +229,9 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
 
         lvLocations = new ListView(this);
         lvLocations.setBackgroundColor(Color.WHITE);
-        lvCols = new String[]{"gwhen", "gfield", "gobject", "glat", "glong", "galt", "gacc"};
+        lvCols = new String[]{"gwhen", "gfield", "gobject"};
         lvLocationsAdapter = new SimpleAdapter(this, G.GPSStackList, R.layout.locations_row, lvCols,
-                new int[]{R.id.tvWhen, R.id.tvField, R.id.tvObject, R.id.tvLat, R.id.tvLong, R.id.tvAlt, R.id.tvAcc});
+                new int[]{R.id.tvWhen, R.id.tvField, R.id.tvObject});
         lvLocations.setAdapter(lvLocationsAdapter);
         lvLocations.setOnItemClickListener(new OnItemClickListener() {
             public void onItemClick(AdapterView<?> parentView, View selectedItemView, int position, long id) {
@@ -277,7 +271,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     //---------------------------------------Functions---------------------------------------------------
     public void UploadDataPoints() {
         G.WTL("Locations.UploadDataPoints Start.");
-        if (!G.gNetworkAvailable(this) ) {
+        if (!G.gNetworkAvailable(this)) {
             WTS("Locations.UploadDataPoints Network not available! Working offline.");
             return;
         }
@@ -301,7 +295,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
 
     public void SendLog() {
         G.WTL("Locations.SendLog Start.");
-        if (!G.gNetworkAvailable(this) ) {
+        if (!G.gNetworkAvailable(this)) {
             WTS("Locations.SendLog Network not available! Working offline.");
             return;
         }
@@ -382,21 +376,22 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
         spObjectAdapter.notifyDataSetChanged();
         G.WTL("Locations.DeleteObject " + objectname);
     }
-public void DeleteEverything(){
-    G.gdbExecute("delete from Fieldcombo");
-    G.gdbExecute("insert into Fieldcombo select 'Field#1'");
-    G.gdbFillArrayList("select * from FieldCombo order by fName", G.FieldCombo);
-    spFieldAdapter.notifyDataSetChanged();
 
-    G.gdbExecute("delete from ObjectCombo");
-    G.gdbExecute("insert into ObjectCombo select 'Object#1'");
-    G.gdbFillArrayList("select * from ObjectCombo order by oName", G.ObjectCombo);
-    spObjectAdapter.notifyDataSetChanged();
+    public void DeleteEverything() {
+        G.gdbExecute("delete from Fieldcombo");
+        G.gdbExecute("insert into Fieldcombo select 'Field#1'");
+        G.gdbFillArrayList("select * from FieldCombo order by fName", G.FieldCombo);
+        spFieldAdapter.notifyDataSetChanged();
 
-    G.gdbExecute("delete from GPSStack");
-    G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
-    lvLocationsAdapter.notifyDataSetChanged();
-}
+        G.gdbExecute("delete from ObjectCombo");
+        G.gdbExecute("insert into ObjectCombo select 'Object#1'");
+        G.gdbFillArrayList("select * from ObjectCombo order by oName", G.ObjectCombo);
+        spObjectAdapter.notifyDataSetChanged();
+
+        G.gdbExecute("delete from GPSStack");
+        G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
+        lvLocationsAdapter.notifyDataSetChanged();
+    }
 
     public String q(String phrase) {
         return "'" + phrase.replace("'", "''") + "'";
@@ -524,6 +519,7 @@ public void DeleteEverything(){
             }
         }).show();
     }
+
     public void ADAKAlertOkCancel(String adaktitle, final String adakdialog, String adakmsg) {
         (new Builder(this))
                 .setTitle(adaktitle)
@@ -557,6 +553,7 @@ public void DeleteEverything(){
                     }
                 }).show();
     }
+
     public void ADAKAlert3(String adaktitle, String adakmsg) {
         (new Builder(this))
                 .setTitle(adaktitle)

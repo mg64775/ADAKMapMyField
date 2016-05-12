@@ -42,7 +42,10 @@ public class GoogleMaps extends Activity implements HTTPInterface {
     Spinner spMenu;
     ArrayAdapter<String> spMenuAdapter;
     String spMenuSelection;
-    int zoom = 0;
+
+    boolean firstcalldone = false;
+    int defaultzoom = 8;
+    int zoom = defaultzoom;
     ImageView iv;
     Bitmap bm;
     HashMap hm;
@@ -65,15 +68,16 @@ public class GoogleMaps extends Activity implements HTTPInterface {
 
         G.gdbFillArrayList("select distinct gfield from GPSStack order by gfield", G.FieldComboMaps);
         spField = new Spinner(this);
-        spField.setLayoutParams(new LayoutParams(-1, -2, 1f));
+        spField.setLayoutParams(new LayoutParams(-1, -2, .4f));
         spFieldAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.FieldComboMaps);
         spField.setAdapter(spFieldAdapter);
         spField.setOnItemSelectedListener(new OnItemSelectedListener() {
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                if (!firstcalldone) return;
                 spFieldSelection = (String) parentView.getSelectedItem();
                 G.gdbFillArrayList("select gobject from GPSStack where gfield=" + q(spFieldSelection) + " order by gobject", G.ObjectComboMaps);
                 spObjectAdapter.notifyDataSetChanged();
-                zoom = 0;
+                zoom = defaultzoom;
                 CallGoogleMaps("");
             }
             public void onNothingSelected(AdapterView<?> parentView) {
@@ -83,13 +87,14 @@ public class GoogleMaps extends Activity implements HTTPInterface {
 
         G.gdbFillArrayList("select gobject from GPSStack where gfield=" + q(spFieldAdapter.getItem(0)) + " order by gobject", G.ObjectComboMaps);
         spObject = new Spinner(this);
-        spObject.setLayoutParams(new LayoutParams(-1, -2, 1f));
+        spObject.setLayoutParams(new LayoutParams(-1, -2, .4f));
         spObjectAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.ObjectComboMaps);
         spObject.setAdapter(spObjectAdapter);
         spObject.setOnItemSelectedListener(new OnItemSelectedListener() {
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                if (!firstcalldone) return;
                 spObjectSelection = (String) parentView.getSelectedItem();
-                zoom = 0;
+                zoom = defaultzoom;
                 CallGoogleMaps(spObjectSelection);
             }
 
@@ -99,7 +104,7 @@ public class GoogleMaps extends Activity implements HTTPInterface {
         llh.addView(spObject);
 
         spMenu = new Spinner(this);
-        spMenu.setLayoutParams(new LayoutParams(-1, -2, 1f));
+        spMenu.setLayoutParams(new LayoutParams(-1, -2, .4f));
         spMenuAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.GoogleMapsMenuCombo);
         spMenu.setAdapter(spMenuAdapter);
         spMenu.setOnItemSelectedListener(new OnItemSelectedListener() {
@@ -108,10 +113,10 @@ public class GoogleMaps extends Activity implements HTTPInterface {
                 parentView.setSelection(0);
                 switch (spMenuSelection) {
                     case "MapObject":
-                        zoom = 0;
+                        zoom = defaultzoom;
                         CallGoogleMaps((String) spObject.getSelectedItem());
                     case "MapField":
-                        zoom = 0;
+                        zoom = defaultzoom;
                         CallGoogleMaps("");
                 }
             }
@@ -159,7 +164,7 @@ public class GoogleMaps extends Activity implements HTTPInterface {
 
         @Override
         public void onScaleEnd(ScaleGestureDetector detector) {
-            zoom = zoom == 0 ? 10 : (Pinch == true ? --zoom : ++zoom);
+            zoom = Pinch == true ? --zoom : ++zoom;
             CallGoogleMaps("");
             return;
         }
@@ -187,9 +192,9 @@ public class GoogleMaps extends Activity implements HTTPInterface {
         }
 
         G.HTTPAction = "maps";
-        G.HTTPParms = markers + (zoom == 0 ? "" : "&zoom=" + Integer.valueOf(zoom)) +
-                "&size=640x640&scale=2&maptype=hybrid"; //&key=AIzaSyANrV0xBbg7vzH1McZHNFHgWAn2YnhNJec";
-        WTS("Waiting for map, zoom=" + (zoom == 0 ? "default" : zoom));
+        G.HTTPParms = markers + //"&zoom=" + zoom +
+                "&size=640x640&scale=2&v=3&maptype=hybrid&key=AIzaSyANrV0xBbg7vzH1McZHNFHgWAn2YnhNJec";
+        WTS("Waiting for map, zoom=" + zoom);
 
         G.WebAsync WhoCares = new G.WebAsync();
         WhoCares.setListener(this);
@@ -198,6 +203,7 @@ public class GoogleMaps extends Activity implements HTTPInterface {
 
     public void HTTPCallBack(String myResult) {
         iv.setImageBitmap(G.GoogleMap);
+        firstcalldone = true;
     }
 
 }

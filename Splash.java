@@ -87,10 +87,15 @@ public class Splash extends AppCompatActivity {
             G.gdbExecute("Create table ValuePairs ( vName varchar(50), vValue varchar(50) )");
             G.gdbExecute("Create table FieldCombo ( fName varchar(50) )");
             G.gdbExecute("Insert into FieldCombo (fName) select 'Canada'");
+            G.gdbExecute("Insert into FieldCombo (fName) select 'Italy'");
             G.gdbExecute("Create table ObjectCombo ( oName varchar(50) )");
             G.gdbExecute("Insert into ObjectCombo (oName) select 'Toronto'");
+            G.gdbExecute("Insert into ObjectCombo (oName) select 'Montreal'");
+            G.gdbExecute("Insert into ObjectCombo (oName) select 'Venice'");
             G.gdbExecute("Create table GPSStack ( gwhen datetime, gfield varchar(50), gobject varchar(50), glat double, glong double, galt int, gacc int )");
             G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) select datetime(), 'Canada','Toronto',43.6532, -79.3832, 10, 10");
+            G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) select datetime(), 'Canada','Montreal',45.5017, -73.5673, 10, 10");
+            G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) select datetime(), 'Italy','Venice',45.4408, 12.3155, 10, 10");
         }
 
         G.gdbExecute("drop table if exists LocationsMenuCombo");

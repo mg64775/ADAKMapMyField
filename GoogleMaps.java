@@ -4,28 +4,27 @@ import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.FloatingActionButton;
-import android.util.DisplayMetrics;
-import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.LinearLayout.LayoutParams;
 import android.widget.Spinner;
-import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.HashMap;
 
-public class GoogleMaps extends Activity implements HTTPInterface {
+public class GoogleMaps extends Activity implements OnMapReadyCallback {
 
     ScaleGestureDetector scaleGestureDetector;
     boolean Pinch = true;
@@ -33,6 +32,7 @@ public class GoogleMaps extends Activity implements HTTPInterface {
     LinearLayout ll;
     LinearLayout llh;
     LinearLayout llv;
+
     Spinner spField;
     String spFieldSelection;
     ArrayAdapter<String> spFieldAdapter;
@@ -42,19 +42,17 @@ public class GoogleMaps extends Activity implements HTTPInterface {
     Spinner spMenu;
     ArrayAdapter<String> spMenuAdapter;
     String spMenuSelection;
+    MapView gmview;
 
     boolean firstcalldone = false;
-    int defaultzoom = 8;
-    int zoom = defaultzoom;
-    ImageView iv;
-    Bitmap bm;
+    int zoom = 4;
+    int zoomfield = 8;
+    int zoomobject = 12;
     HashMap hm;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         G.WTL("GoogleMaps.onCreate Starts");
-
-        scaleGestureDetector = new ScaleGestureDetector(this, new MyOnScaleGestureListener());
 
         ll = new LinearLayout(this);
         ll.setOrientation(LinearLayout.VERTICAL);
@@ -77,9 +75,10 @@ public class GoogleMaps extends Activity implements HTTPInterface {
                 spFieldSelection = (String) parentView.getSelectedItem();
                 G.gdbFillArrayList("select gobject from GPSStack where gfield=" + q(spFieldSelection) + " order by gobject", G.ObjectComboMaps);
                 spObjectAdapter.notifyDataSetChanged();
-                zoom = defaultzoom;
-                CallGoogleMaps("");
+                zoom = zoomfield;
+                gmview.getMapAsync(GoogleMaps.this);
             }
+
             public void onNothingSelected(AdapterView<?> parentView) {
             }
         });
@@ -94,8 +93,7 @@ public class GoogleMaps extends Activity implements HTTPInterface {
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 if (!firstcalldone) return;
                 spObjectSelection = (String) parentView.getSelectedItem();
-                zoom = defaultzoom;
-                CallGoogleMaps(spObjectSelection);
+                zoom = zoomobject;
             }
 
             public void onNothingSelected(AdapterView<?> parentView) {
@@ -113,11 +111,10 @@ public class GoogleMaps extends Activity implements HTTPInterface {
                 parentView.setSelection(0);
                 switch (spMenuSelection) {
                     case "MapObject":
-                        zoom = defaultzoom;
-                        CallGoogleMaps((String) spObject.getSelectedItem());
+                        zoom = zoomobject;
+                        //CallGoogleMaps((String) spObject.getSelectedItem());
                     case "MapField":
-                        zoom = defaultzoom;
-                        CallGoogleMaps("");
+                        zoom = zoomfield;
                 }
             }
 
@@ -126,84 +123,41 @@ public class GoogleMaps extends Activity implements HTTPInterface {
         });
         llh.addView(spMenu);
 
-        iv = new ImageView(this);
-        iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        iv.setLayoutParams(new LayoutParams(-1, -1));
-        llv.addView(iv);
+        gmview = new MapView(this);
+        gmview.onCreate(savedInstanceState);
+        gmview.onResume();
+        gmview.setLayoutParams(new LayoutParams(-1, -1));
+        gmview.getMapAsync(this);
+        llv.addView(gmview);
 
         ll.addView(llh);
         ll.addView(llv);
 
         setContentView(ll);
-        CallGoogleMaps("");
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        scaleGestureDetector.onTouchEvent(event);
-        return true;
-    }
-
-    public class MyOnScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
-
-        public boolean onScale(ScaleGestureDetector detector) {
-
-            float scaleFactor = detector.getScaleFactor();
-            if (scaleFactor >= 1) {
-                Pinch = false;
-            } else {
-                Pinch = true;
+    public void onMapReady(GoogleMap map) {
+        LatLng current = new LatLng(42, 75);
+        map.setMapType(4);
+        for (HashMap hm : G.GPSStackList) {
+            if (hm.get("gfield").equals(spField.getSelectedItem())) {
+                current = new LatLng(Float.valueOf(hm.get("glat").toString()), Float.valueOf(hm.get("glong").toString()));
+                map.addMarker(new MarkerOptions()
+                        .title("Field=" + hm.get("gfield"))
+                        .snippet("Object=" + hm.get("gobject"))
+                        .draggable(true)
+                        .position(current));
             }
-            return true;
         }
-
-        @Override
-        public boolean onScaleBegin(ScaleGestureDetector detector) {
-            return true;
-        }
-
-        @Override
-        public void onScaleEnd(ScaleGestureDetector detector) {
-            zoom = Pinch == true ? --zoom : ++zoom;
-            CallGoogleMaps("");
-            return;
-        }
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(current, zoom));
+        firstcalldone = true;
     }
 
     public String q(String phrase) {
         return "'" + phrase.replace("'", "''") + "'";
     }
 
-    //public void WTM(String msg) { tvMsg.setText(msg); }
-
     public void WTS(String msg) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
-
-    public void CallGoogleMaps(String ob) {
-        String markers = "";
-
-        for (int i = 0; i < G.GPSStackList.size(); ++i) {
-            hm = new HashMap();
-            hm = (HashMap) G.GPSStackList.get(i);
-            if (hm.get("gfield").equals(spField.getSelectedItem()) && (ob == "" || (hm.get("gobject").equals(ob)))) {
-                markers = markers + "&markers=" + hm.get("glat") + "," + hm.get("glong");
-            }
-        }
-
-        G.HTTPAction = "maps";
-        G.HTTPParms = markers + //"&zoom=" + zoom +
-                "&size=640x640&scale=2&v=3&maptype=hybrid&key=AIzaSyANrV0xBbg7vzH1McZHNFHgWAn2YnhNJec";
-        WTS("Waiting for map, zoom=" + zoom);
-
-        G.WebAsync WhoCares = new G.WebAsync();
-        WhoCares.setListener(this);
-        WhoCares.execute();
-    }
-
-    public void HTTPCallBack(String myResult) {
-        iv.setImageBitmap(G.GoogleMap);
-        firstcalldone = true;
-    }
-
 }

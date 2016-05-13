@@ -235,6 +235,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
         lvLocations.setAdapter(lvLocationsAdapter);
         lvLocations.setOnItemClickListener(new OnItemClickListener() {
             public void onItemClick(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                ADAKAlert3("Edit DataPoint...", LocationField + "->" + LocationObject);
             }
         });
         llvertical.addView(lvLocations);
@@ -244,7 +245,6 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
         GPSLocManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         //Permission already processed in Splash, but check required here for some reason!
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
-
 
         G.WTL("Locations.onCreate End.");
     }
@@ -565,11 +565,12 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                 })
                 .setNeutralButton("Cancel", new android.content.DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
+                        return;
                     }
                 })
-                .setNegativeButton("Delete", new android.content.DialogInterface.OnClickListener() {
+                .setNegativeButton("Edit", new android.content.DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
-                        //   DeleteDataPoint((String) spField.getSelectedItem(), (String) spObject.getSelectedItem());
+                        startActivity(new Intent(getBaseContext(), EditDataPoint.class));
                     }
                 }).show();
     }

@@ -251,11 +251,7 @@ public class G {
             try {
                 HTTPResult = "";
                 HTTPResponseCode = -1;
-                if (HTTPAction.equals("maps")) {
-                    HTTPUrl = HTTPMapsUrl + HTTPParms;
-                } else {
-                    HTTPUrl = HTTPDevUrl;   //Parms are posted here.
-                }
+                HTTPUrl = HTTPDevUrl;   //Parms are posted here.
                 WTL("WebAsync.doInBackground Action=" + HTTPAction);
                 WTL("WebAsync.doInBackground URL=" + HTTPUrl);
                 WTL("WebAsync.doInBackground Parms=" + ((HTTPAction.equals("sendlog")) ? "Not for sendlog." : HTTPParms));

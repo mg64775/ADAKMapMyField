@@ -25,6 +25,7 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 
 public class Splash extends AppCompatActivity {
     //AppCompatActivity gives us the title bar!
@@ -33,14 +34,15 @@ public class Splash extends AppCompatActivity {
     LinearLayout lb;
     TextView tvPurpose;
     TextView tvMsg;
-    Button btLogon;
-    Button btLogoff;
+    Button btLogonLogoff;
     Button btLocations;
     Button btGoogleMaps;
     Button btLog;
     Button btHelp;
     File sd;
+    File logprevious;
     boolean rc = false;
+    float zoomdefault = 18;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,12 +61,13 @@ public class Splash extends AppCompatActivity {
         }
 
         sd = new File(G.currentdirectory + "/Log.txt");
+        logprevious = new File(G.currentdirectory + "/PreviousLog.txt");
         try {
-            if (sd.exists()) sd.delete();
+            if (sd.exists()) sd.renameTo(logprevious);
             sd.createNewFile();
             G.WTL("Splash.onCreate Starts");
             G.WTL("Splash.onCreate Permissions OK");
-            G.WTL("File " + G.currentdirectory + "/Log.txt created");
+            G.WTL("Splash.onCreate File " + G.currentdirectory + "/Log.txt created");
         } catch (IOException exc) {
             Toast.makeText(this, "Issue creating file " + G.currentdirectory + "/Log.txt", Toast.LENGTH_LONG).show();
             finish();
@@ -74,50 +77,67 @@ public class Splash extends AppCompatActivity {
         G.WTL("Splash.onCreate Model=" + Build.MODEL);
         G.WTL("Splash.onCreate DeviceId=" + G.deviceId);
         G.WTL("Splash.onCreate Device Running Android API Version=" + VERSION.SDK_INT);
-        G.WTL("Splash.onCreate MapMyField Version=" + G.version);
-        setTitle("ADAK MapMyField Version " + G.version );
+
+        Date buildDate = new Date(BuildConfig.ADAKCompiledTime);
+        G.WTL("Splash.onCreate MapMyField Version=" + G.version + ", Created=" + G.sdfymdhms.format(buildDate));
+        setTitle("ADAK MapMyField Version " + G.version + ", Created=" + G.sdfymdhms.format(buildDate));
 
         G.db = openOrCreateDatabase(G.currentdirectory + "/ADAK.db", Context.MODE_PRIVATE, null);
-        ss = "select count(*) from sqlite_master where name = 'FieldCombo' and type='table'";
-        if (G.gdbSingle(ss).equals("1")) {
-            G.gdbExecute("drop table if exists ValuePairs");
-            G.gdbExecute("drop table if exists FieldCombo");
-            G.gdbExecute("drop table if exists ObjectCombo");
-            G.gdbExecute("drop table if exists GPSStack");
-            G.gdbExecute("Create table ValuePairs ( vName varchar(50), vValue varchar(50) )");
-            G.gdbExecute("Create table FieldCombo ( fName varchar(50) )");
-            G.gdbExecute("Insert into FieldCombo (fName) select 'Canada'");
-            G.gdbExecute("Insert into FieldCombo (fName) select 'Italy'");
-            G.gdbExecute("Create table ObjectCombo ( oName varchar(50) )");
-            G.gdbExecute("Insert into ObjectCombo (oName) select 'Toronto'");
-            G.gdbExecute("Insert into ObjectCombo (oName) select 'Montreal'");
-            G.gdbExecute("Insert into ObjectCombo (oName) select 'Venice'");
-            G.gdbExecute("Create table GPSStack ( gwhen datetime, gfield varchar(50), gobject varchar(50), glat double, glong double, galt int, gacc int )");
-            G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) select datetime(), 'Canada','Toronto',43.6532, -79.3832, 10, 10");
-            G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) select datetime(), 'Canada','Montreal',45.5017, -73.5673, 10, 10");
-            G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) select datetime(), 'Italy','Venice',45.4408, 12.3155, 10, 10");
-        }
 
+        G.userid = G.gdbSingle("select vValue from ValuePairs where vName='userid'");
+        G.password = G.gdbSingle("select vValue from ValuePairs where vName='password'");
+
+        G.gdbExecute("drop table if exists ValuePairs");
+        G.gdbExecute("drop table if exists FieldCombo");
+        G.gdbExecute("drop table if exists ObjectCombo");
+        G.gdbExecute("drop table if exists GPSStack");
+        G.gdbExecute("Create table ValuePairs ( vName text, vValue text )");
+        G.gdbExecute("insert into ValuePairs select 'version', " + q(G.version));
+        G.gdbExecute("insert into ValuePairs (vName,vValue) select 'userid'," + q(G.userid));
+        G.gdbExecute("insert into ValuePairs (vName,vValue) select 'password'," + q(G.password));
+
+        G.gdbExecute("Create table FieldCombo ( fName text )");
+        G.gdbExecute("Create table ObjectCombo ( oName text )");
+        G.gdbExecute("Create table GPSStack ( gwhen datetime, gfield text, gobject text," +
+                "glat real, glong real, galt integer, gacc integer, " +
+                "glabel text default 'EditMe', gzoom real default " + zoomdefault + ")");
+
+        G.gdbExecute("Insert into FieldCombo (fName) select ' Show All'");
+        G.gdbExecute("Insert into FieldCombo (fName) select 'Canada'");
+        G.gdbExecute("Insert into FieldCombo (fName) select 'Italy'");
+        G.gdbExecute("Insert into ObjectCombo (oName) select ' Show All'");
+        G.gdbExecute("Insert into ObjectCombo (oName) select 'Toronto'");
+        G.gdbExecute("Insert into ObjectCombo (oName) select 'Montreal'");
+        G.gdbExecute("Insert into ObjectCombo (oName) select 'Venice'");
+        G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel) " +
+                "select datetime(), ' Show All',' Show All', 0, 0, 0, 0, ''");
+        G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel) " +
+                "select datetime(), 'Canada','Toronto',43.6532, -79.3832, 11, 6, 'TClabel'");
+        G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel) " +
+                "select datetime(), 'Canada','Montreal',45.5017, -73.5673, 12, 7, 'CMlabel'");
+        G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel) " +
+                "select datetime(), 'Italy','Venice',45.4408, 12.3155, 13, 8, 'IVlabel'");
+
+        //This makes it easier to update the menus...
         G.gdbExecute("drop table if exists LocationsMenuCombo");
-        G.gdbExecute("Create table LocationsMenuCombo ( mName varchar(50) )");
+        G.gdbExecute("Create table LocationsMenuCombo ( mName text )");
         G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'Menu'");
         G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'GoogleMaps'");
         G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'AddField'");
         G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'AddObject'");
         G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'DeleteField'");
         G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'DeleteObject'");
-        G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'UploadDataPoints'");
+        G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'UploadPoints'");
         G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'SendLog'");
         G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'DeleteEverything'");
 
+        //This makes it easier to update the menus...
         G.gdbExecute("drop table if exists GoogleMapsMenuCombo");
-        G.gdbExecute("Create table GoogleMapsMenuCombo (mName varchar(50) )");
+        G.gdbExecute("Create table GoogleMapsMenuCombo (mName text )");
         G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'Menu'");
         G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'MapField'");
         G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'MapObject'");
 
-        G.userid = G.gdbSingle("select vValue from ValuePairs where vName='userid'");
-        G.password = G.gdbSingle("select vValue from ValuePairs where vName='password'");
 
         G.gdbFillArrayList("select * from FieldCombo order by fName", G.FieldCombo);
         G.gdbFillArrayList("select * from ObjectCombo order by oName", G.ObjectCombo);
@@ -146,31 +166,20 @@ public class Splash extends AppCompatActivity {
         tvPurpose.setMovementMethod(new ScrollingMovementMethod());
         ll.addView(tvPurpose);  // not a tv
 
-        btLogon = new Button(this);
-        btLogon.setAllCaps(false);
-        btLogon.setText("Logon");
-        btLogon.setLayoutParams(new LayoutParams(-2, -2));
-        btLogon.setOnClickListener(new OnClickListener() {
+        btLogonLogoff = new Button(this);
+        btLogonLogoff.setAllCaps(false);
+        btLogonLogoff.setText("Logon");
+        btLogonLogoff.setLayoutParams(new LayoutParams(-2, -2));
+        btLogonLogoff.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                btLogon(v);
+                btLogonLogoff(v);
             }
         });
-        lb.addView(btLogon);
-
-        btLogoff = new Button(this);
-        btLogoff.setAllCaps(false);
-        btLogoff.setText("Logoff");
-        btLogoff.setLayoutParams(new LayoutParams(-2, -2));
-        btLogoff.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                btLogoff(v);
-            }
-        });
-        lb.addView(btLogoff);
+        lb.addView(btLogonLogoff);
 
         btLocations = new Button(this);
         btLocations.setAllCaps(false);
-        btLocations.setText("Data Points");
+        btLocations.setText("Points");
         btLocations.setLayoutParams(new LayoutParams(-2, -2));
         btLocations.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
@@ -203,7 +212,7 @@ public class Splash extends AppCompatActivity {
 
         btHelp = new Button(this);
         btHelp.setAllCaps(false);
-        btHelp.setText("Help");
+        btHelp.setText("?");
         btHelp.setLayoutParams(new LayoutParams(-2, -2));
         btHelp.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
@@ -220,12 +229,15 @@ public class Splash extends AppCompatActivity {
 
         setContentView(ll);
     }
+
     protected void onResume() {
         super.onResume();
-        WTM("Splash.onResume You have " + G.GPSStackList.size() + " Data Point(s) active.");
+        btLogonLogoff.setText(G.who.isEmpty() ? "Logon" : "Logoff");
+        WTM("Splash.onResume You have " + (G.GPSStackList.size() -1) + " Data Point(s) active.");
     }
+
     public void ADAKCheckWritePermission() {
-           boolean hasPermission;     //Starting with API 23, Write+Location are dangerous and needs confirmation.
+        boolean hasPermission;     //Starting with API 23, Write+Location are dangerous and needs confirmation.
         hasPermission = (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
         if (!hasPermission)
@@ -244,48 +256,63 @@ public class Splash extends AppCompatActivity {
             finish();
         }
     }
-    public void btLogon(View vw) {
-        if (!G.gNetworkAvailable(this) ){
+
+    public void btLogonLogoff(View vw) {
+        if (!G.gNetworkAvailable(this)) {
             WTS("Splash.btLogon Network not available! Working offline.");
-        } else {
-            if (G.who.isEmpty()) {
-                startActivity(new Intent(this, Logon.class));
-            } else {
-                WTS("Splash.btLogon Already logged in.");
-            }
+            return;
+        }
+
+        if (btLogonLogoff.getText().equals("Logon")) {
+            startActivity(new Intent(this, Logon.class));
+        }
+
+        if (btLogonLogoff.getText().equals("Logoff")) {
+            WTS("Splash.btLogonLogoff " + G.who + ", you are now logged off.");
+            G.who = "";
+            btLogonLogoff.setText("Logon");
         }
     }
-    public void btLogoff(View vw){
-        G.who = "";
-        WTS("Splash.btLogoff You are logged off.");
-    }
+
     public void btLocations(View vw) {
         G.WTL("Splash.btLocations Click");
         startActivity(new Intent(this, Locations.class));
     }
+
     public void btGoogleMaps(View vw) {
         G.WTL("Splash.btGoogleMaps Click");
         if (G.GPSStackList.size() == 0) {
             WTS("Splash.btGoogleMaps At least one data point needed for GoogleMaps");
             return;
         }
+        G.MapCaller = "Splash.btGoogleMaps";
+        G.MapField = "";
+        G.MapObject = "";
         startActivity(new Intent(this, GoogleMaps.class));
     }
+
     public void btLog(View vw) {
         G.WTL("Splash.btLog Click");
         Intent loginintent = new Intent(this, Log.class);
         startActivity(loginintent);
     }
+
     public void btHelp(View vw) {
         G.WTL("Splash.btHelp Click");
         WTS("Splash.Help not implemented yet.");
     }
+
+    public String q(String phrase) {
+        return "'" + phrase.replace("'", "''") + "'";
+    }
+
     public void WTS(String msg) {
-        Toast.makeText(this, msg.substring(msg.indexOf(" ")+1), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, msg.substring(msg.indexOf(" ") + 1), Toast.LENGTH_SHORT).show();
         G.WTL(msg);
     }
+
     public void WTM(String msg) {
-        tvMsg.setText(msg.substring(msg.indexOf(" ")+1));
+        tvMsg.setText(msg.substring(msg.indexOf(" ") + 1));
         G.WTL(msg);
     }
 }

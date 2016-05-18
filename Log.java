@@ -17,10 +17,9 @@ public class Log extends Activity implements HTTPInterface {
     LinearLayout llVertical;
     LinearLayout llHorizontal;
     TextView tvLog;
+    Button btWhichLog;
     Button btTop;
     Button btBottom;
-    Button btRefresh;
-    Button btReturn;
     Button btSend;
 
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,8 +40,35 @@ public class Log extends Activity implements HTTPInterface {
         tvLog.setVerticalScrollBarEnabled(true);
         tvLog.setMovementMethod(new ScrollingMovementMethod());
         tvLog.setLayoutParams(new LinearLayout.LayoutParams(-1, -1, 1));
-        tvLog.setText(G.gReadFile(G.currentdirectory + "/log.txt"));
+        String ff = G.gReadFile(G.currentdirectory + "/Log.txt");
+        if (ff.contains("---Error---"))
+            llVertical.setBackgroundColor(Color.parseColor(G.issuebgcolor));
+        tvLog.setText(ff);
         llVertical.addView(tvLog);
+
+        btWhichLog = new Button(this);
+        btWhichLog.setText("Previous");
+        btWhichLog.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
+        btWhichLog.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (btWhichLog.getText().equals("Previous")) {
+                    String ff = G.gReadFile(G.currentdirectory + "/PreviousLog.txt");
+                    if (ff.contains("---Error---"))
+                        llVertical.setBackgroundColor(Color.parseColor(G.issuebgcolor));
+                    else llVertical.setBackgroundColor(Color.parseColor(G.initialbgcolor));
+                    tvLog.setText(ff);
+                    btWhichLog.setText("Current");
+                } else {
+                    String ff = G.gReadFile(G.currentdirectory + "/Log.txt");
+                    if (ff.contains("---Error---"))
+                        llVertical.setBackgroundColor(Color.parseColor(G.issuebgcolor));
+                    else llVertical.setBackgroundColor(Color.parseColor(G.initialbgcolor));
+                    tvLog.setText(ff);
+                    btWhichLog.setText("Previous");
+                }
+            }
+        });
+        llHorizontal.addView(btWhichLog);
 
         btTop = new Button(this);
         btTop.setText("Top");
@@ -54,6 +80,7 @@ public class Log extends Activity implements HTTPInterface {
         });
         llHorizontal.addView(btTop);
 
+
         btBottom = new Button(this);
         btBottom.setText("Bottom");
         btBottom.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
@@ -63,26 +90,6 @@ public class Log extends Activity implements HTTPInterface {
             }
         });
         llHorizontal.addView(btBottom);
-
-        btRefresh = new Button(this);
-        btRefresh.setText("Refresh");
-        btRefresh.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
-        btRefresh.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                tvLog.setText(G.gReadFile(G.currentdirectory + "/log.txt"));
-            }
-        });
-        llHorizontal.addView(btRefresh);
-
-        btReturn = new Button(this);
-        btReturn.setText("Return");
-        btReturn.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
-        btReturn.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                finish();
-            }
-        });
-        llHorizontal.addView(btReturn);
 
         btSend = new Button(this);
         btSend.setText("SendLog");
@@ -111,6 +118,13 @@ public class Log extends Activity implements HTTPInterface {
         setContentView(llVertical);
     }
 
+    protected void onPause() {
+        super.onPause();
+    }
+
+    protected void onResume() {
+        super.onResume();
+    }
 
     public void WTS(String msg) {
         Toast.makeText(this, msg.substring(msg.indexOf(" ")), Toast.LENGTH_SHORT).show();

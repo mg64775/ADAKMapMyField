@@ -2,7 +2,7 @@ package com.adakonline.adakmapmyfield;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog.Builder;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -15,9 +15,7 @@ import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.Space;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -54,8 +52,8 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     int GPSBadPointsMax = 3;
     boolean GPSFirstCallback = false;
     String LocationWhen;
-    String LocationField;
-    String LocationObject;
+    static String LocationField;
+    static String LocationObject;
     float LocationLat;
     float LocationLong;
     int LocationAlt;
@@ -66,6 +64,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     LinearLayout llgps;
     Space spacer;
     Spinner spField;
+    boolean spfieldfirstcalldone = false;
     ArrayAdapter<String> spFieldAdapter;
     Spinner spObject;
     ArrayAdapter<String> spObjectAdapter;
@@ -102,9 +101,20 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
         spField.setOnItemSelectedListener(new OnItemSelectedListener() {
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 LocationField = (String) parentView.getSelectedItem();
-                G.WTL("Locations.spFieldSelected " + (String) parentView.getSelectedItem());
-                if (LocationField.startsWith("~"))
-                    ADAKAlertText("Adding a field...", "AddField", "Enter a new field name...");
+                G.WTL("Locations.spFieldSelected " + LocationField);
+                if (spfieldfirstcalldone) {
+                    if (position == 0) {
+                        btGPS.setEnabled(false);
+                        G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
+                    } else {
+                        btGPS.setEnabled(true);
+                        G.gdbFillHashMap("select rowid,* from GPSStack where gfield='" + LocationField + "' order by gwhen desc", G.GPSStackList);
+                    }
+                    lvLocationsAdapter.notifyDataSetChanged();
+                } else {
+                    spfieldfirstcalldone = true;
+                    return;
+                }
             }
 
             public void onNothingSelected(AdapterView<?> parentView) {
@@ -121,8 +131,6 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 LocationObject = (String) parentView.getSelectedItem();
                 G.WTL("Locations.spObjectSelected " + parentView.getSelectedItem());
-                if (LocationObject.startsWith("~"))
-                    ADAKAlertText("Adding an object...", "AddObject", "Enter a new object name...");
             }
 
             public void onNothingSelected(AdapterView<?> parentView) {
@@ -138,12 +146,15 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 G.WTL("Locations.spMenuSelected " + (String) parentView.getSelectedItem());
                 switch ((String) parentView.getSelectedItem()) {
-                    case "GoogleMaps":
-                        if (G.GPSStackList.size() > 0)
-                            startActivity(new Intent(getBaseContext(), GoogleMaps.class));
-                        else
-                            WTS("At least one data point needed for GoogleMaps");
-                        break;
+//                    case "GoogleMaps":
+//                        if (G.GPSStackList.size() > 0) {
+//                            G.MapCaller = "Locations.spMenu";
+//                            G.MapField = LocationField;
+//                            G.MapObject = LocationObject;
+//                            startActivity(new Intent(getBaseContext(), GoogleMaps.class));
+//                        } else
+//                            WTS("At least one data point needed for GoogleMaps");
+//                        break;
                     case "AddField":
                         ADAKAlertText("Adding a field...", "AddField", "Enter a new field name...");
                         break;
@@ -161,7 +172,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                     case "DeleteEverything":
                         ADAKAlertOkCancel("Deleting all Field & Objects & DataPoints...", "DeleteEverything", "Everything will be deleted.");
                         break;
-                    case "UploadDataPoints":
+                    case "UploadPoints":
                         UploadDataPoints();
                         break;
                     case "SendLog":
@@ -186,32 +197,14 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
 
         btGPS = new Button(this);
         btGPS.setText("Record\nData Point");
+        btGPS.setEnabled(false);
         btGPS.setLayoutParams(new LayoutParams(-2, -2));
-        btGPS.setOnClickListener(new OnClickListener() {
+        btGPS.setOnClickListener(new View.OnClickListener() {
             public void onClick(View arg0) {
                 G.WTL("Locations.btGPS Click.");
-
-                if (((String) spField.getSelectedItem()).startsWith("~")) {
-                    WTS("Locations.btGPS Select/Add a Field first!");
-                    return;
-                }
-                if (((String) spObject.getSelectedItem()).startsWith("~")) {
-                    WTS("Locations.btGPS Select/Add an Object first!");
-                    return;
-                }
                 GPSGoodPoints = 0;
                 GPSBadPoints = 0;
                 GPSActive = true;
-//                if (!GPSLocManager.isProviderEnabled("gps")) {
-//                    WTS("Locations.btGPS GPS is not yet ready.");
-//                } else {
-//                    ss = "select count(*) from GPSStack where gfield='" + spField.getSelectedItem() + "' and gobject='" + spObject.getSelectedItem() + "'";
-//                    if (G.gdbSingleInt(ss) == 0) {
-//                        GPSActive = true;
-//                    } else {
-//                        ADAKAlertOkCancel("Redoing this data point...", "Overlay", "Overlay location for...\nField=" + spField.getSelectedItem() + ", Object=" + spObject.getSelectedItem());
-//                    }
-//                }
             }
         });
         llgps.addView(btGPS);
@@ -233,9 +226,13 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
         lvLocationsAdapter = new SimpleAdapter(this, G.GPSStackList, R.layout.locations_row, lvCols,
                 new int[]{R.id.tvWhen, R.id.tvField, R.id.tvObject});
         lvLocations.setAdapter(lvLocationsAdapter);
-        lvLocations.setOnItemClickListener(new OnItemClickListener() {
+        lvLocations.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-                ADAKAlert3("Edit DataPoint...", LocationField + "->" + LocationObject);
+                G.StackPosition = position;
+                G.MapCaller = "Locations.ADAKAlert3";
+                G.MapField = G.GPSStackList.get(G.StackPosition).get("gfield");
+                G.MapObject = G.GPSStackList.get(G.StackPosition).get("gobject");
+                ADAKAlert3("Edit DataPoint...", G.MapField + "." + G.MapObject);
             }
         });
         llvertical.addView(lvLocations);
@@ -250,12 +247,12 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     }
 
     //---------------------------------------Overides---------------------------------------------------
-    //---------------------------------------Overides---------------------------------------------------
-    //---------------------------------------Overides---------------------------------------------------
+//---------------------------------------Overides---------------------------------------------------
+//---------------------------------------Overides---------------------------------------------------
     protected void onResume() {
         super.onResume();
         //Permission already processed in Splash, but check required here for some reason!
-        //ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
         //Squigly red line below is fine, its only a warning!
         GPSLocManager.requestLocationUpdates("gps", 1000L, -1.0F, this);
         G.WTL("Locations.onResume GPS.requestUpdates");
@@ -267,8 +264,8 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     }
 
     //---------------------------------------Functions---------------------------------------------------
-    //---------------------------------------Functions---------------------------------------------------
-    //---------------------------------------Functions---------------------------------------------------
+//---------------------------------------Functions---------------------------------------------------
+//---------------------------------------Functions---------------------------------------------------
     public void UploadDataPoints() {
         G.WTL("Locations.UploadDataPoints Start.");
         if (!G.gNetworkAvailable(this)) {
@@ -284,7 +281,8 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
             ss += G.GPSStackList.get(i).get("glat") + G.dlm;
             ss += G.GPSStackList.get(i).get("glong") + G.dlm;
             ss += G.GPSStackList.get(i).get("galt") + G.dlm;
-            ss += G.GPSStackList.get(i).get("gacc") + G.dlmrow;
+            ss += G.GPSStackList.get(i).get("gacc") + G.dlm;
+            ss += G.GPSStackList.get(i).get("glabel") + G.dlmrow;
         }
 
         G.gBuildAPIParms("upload", ss);
@@ -338,19 +336,11 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
         WTS("Locations.DeleteAllDataPoints All Points gone!");
     }
 
-    public void DeleteDataPointList() {
-        G.WTL("Locations.DeleteDataPointList Start.");
-        String rowidlist = "";
-        for (i = 0; i < G.GPSStackList.size(); i++) {
-            hm = (HashMap) G.GPSStackList.get(i);
-            if (hm.get("flag") == true)
-                rowidlist += "," + hm.get("rowid");
-        }
-        G.gdbExecute("delete from GPSStack where rowid in(" + rowidlist + ")");
+    public void DeleteDataPoint(int rowid) {
+        G.WTL("Locations.DeleteDataPoint Start.");
+        G.gdbExecute("delete from GPSStack where rowid in(" + rowid + ")");
         G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
         lvLocationsAdapter.notifyDataSetChanged();
-        btDelete.setEnabled(false);
-        btGPS.setEnabled(true);
     }
 
     public void DeleteField(String fieldname) {
@@ -470,22 +460,21 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     }
 
     public void InsertDataPoint() {
-        G.WTL("Locations.InsertDataPoint Start.");
-        ss = "Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) " +
+        ss = "Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel,gzoom) " +
                 "select " + q(LocationWhen) + "," + q(LocationField) + "," + q(LocationObject) + "," +
-                LocationLat + "," + LocationLong + "," + LocationAlt + "," + LocationAcc;
+                LocationLat + "," + LocationLong + "," + LocationAlt + "," + LocationAcc + "," + q("EditMe") + ",16";
         G.gdbExecute(ss);
-        G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
+        G.gdbFillHashMap("select rowid,* from GPSStack where gfield='" + LocationField + "' order by gwhen desc", G.GPSStackList);
         lvLocationsAdapter.notifyDataSetChanged();
-        G.WTL("Locations.InsertDataPoint Location " + LocationField + ":" + LocationObject);
+        G.WTL("Locations.InsertDataPoint Location " + LocationField + "." + LocationObject);
     }
 
     //-----------------------------------Dialogs----------------------------------------
-    //-----------------------------------Dialogs----------------------------------------
-    //-----------------------------------Dialogs----------------------------------------
+//-----------------------------------Dialogs----------------------------------------
+//-----------------------------------Dialogs----------------------------------------
     public void ADAKAlertText(String title, final String adakdialog, String adakmsg) {
         etInput = new EditText(this);
-        (new Builder(this))
+        (new AlertDialog.Builder(this))
                 .setTitle(title)
                 .setMessage(adakmsg).setView(etInput)
                 .setPositiveButton("OK", new android.content.DialogInterface.OnClickListener() {
@@ -521,14 +510,14 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     }
 
     public void ADAKAlertOkCancel(String adaktitle, final String adakdialog, String adakmsg) {
-        (new Builder(this))
+        (new android.support.v7.app.AlertDialog.Builder(this))
                 .setTitle(adaktitle)
                 .setMessage(adakmsg)
                 .setPositiveButton("Ok", new android.content.DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
                         switch (adakdialog) {
                             case "DeleteDataPointList":
-                                DeleteDataPointList();
+                                DeleteDataPoint(0);
                                 break;
                             case "DeleteField":
                                 DeleteField((String) spField.getSelectedItem());
@@ -555,11 +544,13 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     }
 
     public void ADAKAlert3(String adaktitle, String adakmsg) {
-        (new Builder(this))
+        (new android.support.v7.app.AlertDialog.Builder(this))
                 .setTitle(adaktitle)
                 .setMessage(adakmsg)
                 .setPositiveButton("Map", new android.content.DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
+                        G.MapCaller = "Locations.ADAKAlert3";
+                        G.WTL(G.MapCaller);
                         startActivity(new Intent(getBaseContext(), GoogleMaps.class));
                     }
                 })
@@ -570,8 +561,28 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                 })
                 .setNegativeButton("Edit", new android.content.DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
-                        startActivity(new Intent(getBaseContext(), EditDataPoint.class));
+                        startActivityForResult(new Intent(getBaseContext(), EditDataPoint.class), 1);
                     }
                 }).show();
+    }
+
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        String result = data.getStringExtra("result");
+        if (requestCode == 1) {
+            if (resultCode == Activity.RESULT_OK) {
+                if (result.equals("save")) {
+                    lvLocationsAdapter.notifyDataSetChanged();
+                    return;
+                }
+                if (result.matches("[0-9]")) {
+                    DeleteDataPoint(Integer.parseInt(result));
+                    return;
+                }
+            }
+            if (resultCode == Activity.RESULT_CANCELED) {
+                return;
+            }
+        }
+
     }
 }

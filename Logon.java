@@ -39,7 +39,6 @@ public class Logon extends Activity implements HTTPInterface {
         //=======================Top==========================
         lltop = new LinearLayout(this);  //Master Layout
         lltop.setBackgroundColor(Color.parseColor(G.initialbgcolor));  //http://www.rapidtables.com/web/color/RGB_Color.htm
-        lltop.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
         lltop.setOrientation(LinearLayout.VERTICAL);
 
         tvuserid = new TextView(this);
@@ -65,7 +64,11 @@ public class Logon extends Activity implements HTTPInterface {
         tvmsg.setGravity(Gravity.CENTER);
         lltop.addView(tvmsg);
 
-        //====================Buttons=============================
+        spspace = new Space(this);
+        spspace.setLayoutParams(new LinearLayout.LayoutParams(-1, -1, 1f));
+        lltop.addView(spspace);
+
+//====================Buttons=============================
         llbuttons = new LinearLayout(this);
         llbuttons.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
         llbuttons.setGravity(Gravity.CENTER + Gravity.BOTTOM);
@@ -80,10 +83,6 @@ public class Logon extends Activity implements HTTPInterface {
         });
         llbuttons.addView(btlogon);
 
-        spspace = new Space(this);
-        spspace.setLayoutParams(new LinearLayout.LayoutParams(-1, -1, 1f));
-        lltop.addView(spspace);
-
         btcancel = new Button(this);
         btcancel.setText("Cancel");
         btcancel.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
@@ -97,7 +96,7 @@ public class Logon extends Activity implements HTTPInterface {
         lltop.addView(llbuttons);
 
         tvstatus = new TextView(this);
-        tvstatus.setText("Status...");
+        WTM("Status...");
         tvstatus.setGravity(Gravity.CENTER);
         tvstatus.setLayoutParams(new LinearLayout.LayoutParams(-1, -2, 0));
 
@@ -114,11 +113,11 @@ public class Logon extends Activity implements HTTPInterface {
         G.userid = etuserid.getText().toString().trim();
         G.password = etpassword.getText().toString().trim();
         if (G.userid.length() == 0 || G.password.length() == 0) {
-            tvmsg.setText("Logon.btlogon We need your credentials to communicate to the FPM!");
+            WTM("Logon.btlogon We need your credentials to communicate with the FPM!");
             return;
         }
 
-        tvstatus.setText("Patience: processing logon");
+        WTM("Processing logon...");
         G.gBuildAPIParms("logon", "");
         G.WebAsync FromTheNet = new G.WebAsync();
         FromTheNet.setListener(this);
@@ -129,25 +128,27 @@ public class Logon extends Activity implements HTTPInterface {
         if (G.HTTPAction.equals("logon")) {
             if (G.HTTPResponseCode == 200 && !G.HTTPResult.contains("IsError")) {
                 G.who = G.HTTPResult.split(G.dlmrowregex)[1];
+                WTS("Splash.btLogonLogoff Welcome " + G.who);
+
                 //Every time: It maybe that the user has switched credentials or password reset.
                 G.gdbExecute("delete from ValuePairs where vName in('userid', 'password')");
                 G.gdbExecute("insert into ValuePairs (vName,vValue) select 'userid'," + q(G.userid));
                 G.gdbExecute("insert into ValuePairs (vName,vValue) select 'password'," + q(G.password));
-                tvstatus.setText(tvstatus.getText() + "(Ok), fetching fields");
+                WTM("Fetching field list...");
 
                 G.gBuildAPIParms("getfieldcombo", "");
                 G.WebAsync FromTheNet = new G.WebAsync();
                 FromTheNet.setListener(this);
                 FromTheNet.execute();
             } else {
-                WTS("Logon.HTTPCallBack We could not log you on! Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);
+                WTM("Logon.HTTPCallBack We could not log you on! Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);
             }
             return;
         }
 
         if (G.HTTPAction.equals("getfieldcombo")) {
             if (G.HTTPResponseCode == 200 && !G.HTTPResult.contains("IsError")) {
-                tvstatus.setText(tvstatus.getText() + "(Ok), fetching objects");
+                WTM("Fetching object list...");
                 String[] ServerFieldList = G.HTTPResult.split(G.dlmrowregex)[1].split(G.dlmregex);
                 for (String item: ServerFieldList) {
                     if (G.FieldCombo.indexOf(item) == -1){
@@ -161,14 +162,14 @@ public class Logon extends Activity implements HTTPInterface {
                 FromTheNet.setListener(this);
                 FromTheNet.execute();
             } else {
-                WTS("Logon.HTTPCallBack Cannot refresh Field list. Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);
+                WTM("Logon.HTTPCallBack Cannot refresh Field list. Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);
             }
             return;
         }
 
         if (G.HTTPAction.equals("getobjectcombo")) {
             if (G.HTTPResponseCode == 200 && !G.HTTPResult.contains("IsError")) {
-                tvstatus.setText(tvstatus.getText() + "(Ok)");
+                WTM(tvstatus.getText() + "(Ok)");
                 String[] ServerObjectList = G.HTTPResult.split(G.dlmrowregex)[1].split(G.dlmregex);
                 for (String item: ServerObjectList) {
                     if (G.ObjectCombo.indexOf(item) == -1){
@@ -178,7 +179,7 @@ public class Logon extends Activity implements HTTPInterface {
                 G.gdbFillArrayList("select * from ObjectCombo order by oname", G.ObjectCombo);
                 finish();
             } else {
-                WTS("Logon.HTTPCallBack Issue pulling Object list. Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);
+                WTM("Logon.HTTPCallBack Issue pulling Object list. Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);
             }
             return;
         }
@@ -187,8 +188,12 @@ public class Logon extends Activity implements HTTPInterface {
         setResult(-1);
         this.finish();
     }
+    public void WTM(String msg) {
+        tvstatus.setText(msg.substring(msg.indexOf(" ") + 1));
+        G.WTL(msg);
+    }
     public void WTS(String msg) {
-        Toast.makeText(getBaseContext(), msg.substring(msg.indexOf(" ") + 1), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, msg.substring(msg.indexOf(" ") + 1), Toast.LENGTH_SHORT).show();
         G.WTL(msg);
     }
 }

@@ -28,12 +28,15 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.StringTokenizer;
 
 public class G {
     public static int timeout = 10000;
     public static String ss = "";
-    public static String version = "40";
+    public static int k = 0;
+    public static String version = "41";
     public static SimpleDateFormat sdfhms = new SimpleDateFormat("hh:mm:ss ");
+    public static SimpleDateFormat sdfymdhms = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss ");
     public static SimpleDateFormat sdfmdhms = new SimpleDateFormat("MM-dd hh:mm:ss ");
     public static String deviceId = "none";
     public static String who = "";
@@ -65,6 +68,7 @@ public class G {
     public static String initialbgcolor = "#B0E0E6"; //http://www.rapidtables.com/web/color/RGB_Color.htm
     public static String successbgcolor = "#CCFFCC"; //http://www.rapidtables.com/web/color/RGB_Color.htm
     public static String actionbgcolor = "#0000FF"; //http://www.rapidtables.com/web/color/RGB_Color.htm
+    public static String issuebgcolor = "#FFCCCC"; //http://www.rapidtables.com/web/color/RGB_Color.htm
 
     public static ArrayList<String> FieldCombo = new ArrayList();
     public static ArrayList<String> ObjectCombo = new ArrayList();
@@ -73,6 +77,11 @@ public class G {
     public static ArrayList<String> LocationsMenuCombo = new ArrayList();
     public static ArrayList<String> GoogleMapsMenuCombo = new ArrayList();
     public static ArrayList<HashMap<String, String>> GPSStackList = new ArrayList();
+    public static int StackPosition;
+
+    public static String MapCaller = "";
+    public static String MapField = "";
+    public static String MapObject = "";
 
     public static void gBuildAPIParms(String action, String args) {
         WTL("G.gBuildAPIParms");
@@ -99,17 +108,25 @@ public class G {
     //=========================JDBC calls===============================
 
     public static String gdbSingle(String statement) {
-        WTL("G.gdbSingle " + statement);
-        Cursor e;
+        WTL("G.gdbSingle.Entry " + statement);
         String ret = "";
         try {
-            e = db.rawQuery(statement, (String[]) null);
-            e.moveToFirst();
-            ret = e.getString(0);
-            e.close();
+            Cursor rs = db.rawQuery(statement, (String[]) null);
+            k = rs.getCount();
+            if (k==0) {
+                WTL("G.gdbSingle.Nodata");
+                return "";
+            }
+
+            rs.moveToFirst();
+            ret = rs.getString(0);
+            rs.close();
         } catch (Exception exc) {
-            WTL("G.gdbSingleInt.Error " + exc.getMessage());
+            WTL("-----Error-----");
+            WTL("G.gdbSingle.Error " + exc.getMessage());
+            WTL("-----Error-----");
         }
+        WTL("G.gdbSingle.Return " + ret);
         return ret;
     }
 
@@ -118,27 +135,38 @@ public class G {
         try {
             db.execSQL(statement);
         } catch (Exception exc) {
+            WTL("-----Error-----");
             WTL("G.gdbExecute.Error " + exc.getMessage());
+            WTL("-----Error-----");
         }
     }
 
     public static int gdbFillArrayList(String statement, ArrayList ar) {
         WTL("G.gdbFillArrayList " + statement);
         try {
-            Cursor cursor = db.rawQuery(statement, null);
-            int colk = cursor.getColumnCount();
+            Cursor rs = db.rawQuery(statement, null);
+            k = rs.getCount();
+            if (k==0) {
+                WTL("G.gdbFillArrayList.NoData");
+                return 0;
+            }
+
+            int colk = rs.getColumnCount();
             ar.clear();
-            for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
+            for (rs.moveToFirst(); !rs.isAfterLast(); rs.moveToNext()) {
                 String cols = "";
                 HashMap hm = new HashMap();
-                for (int i = 0; i < colk; ++i) cols = cols + cursor.getString(i) + dlm;
+                for (int i = 0; i < colk; ++i) cols = cols + rs.getString(i) + dlm;
                 cols = cols.substring(0, cols.length() - 1);
                 ar.add(cols);
             }
-            cursor.close();
+            rs.close();
         } catch (Exception exc) {
+            WTL("-----Error-----");
             WTL("G.gdbFillArrayList.Error " + exc.getMessage());
+            WTL("-----Error-----");
         }
+        WTL("G.gdbFillArrayList.Count " + k);
         return 0;
     }
 
@@ -146,20 +174,27 @@ public class G {
         WTL("G.gdbFillHashMap " + statement);
         try {
             ar.clear();
-            Cursor cursor = db.rawQuery(statement, null);
-            int colk = cursor.getColumnCount();
-            for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
+            Cursor rs = db.rawQuery(statement, null);
+            k = rs.getCount();
+            if (k==0) {
+                WTL("G.gdbFillHashMap.NoData");
+                return 0;
+            }
+            int colk = rs.getColumnCount();
+            for (rs.moveToFirst(); !rs.isAfterLast(); rs.moveToNext()) {
                 HashMap hm = new HashMap();
-                for (int i = 0; i < colk; ++i) {  //select rowid,* so gwhen drops year-
-                  hm.put(cursor.getColumnName(i), cursor.getString(i).substring(i==1 ? 5 : 0));
+                for (int i = 0; i < colk; ++i) {  //select rowid,* so gwhen drops year at 5
+                  hm.put(rs.getColumnName(i), rs.getString(i).substring(i==1 ? 5 : 0));
                 }
-                hm.put("flag", false);
                 ar.add(hm);
             }
-            cursor.close();
+            rs.close();
         } catch (Exception exc) {
+            WTL("-----Error-----");
             WTL("G.gdbFillHashMap.Error " + exc.getMessage());
+            WTL("-----Error-----");
         }
+        WTL("G.gdbFillHashMap.Count " + k);
         return 0;
     }
 
@@ -180,7 +215,9 @@ public class G {
             ff = new String(output);
             WTL("G.gReadFile File=" + fn + ", Length=" + ff.length());
         } catch (Exception exc) {
+            WTL("-----Error-----");
             WTL("G.gReadFile.Error " + exc.getMessage());
+            WTL("-----Error-----");
         }
         return ff;
     }
@@ -194,7 +231,9 @@ public class G {
             fos.write(data.getBytes());
             fos.close();
         } catch (Exception exc) {
+            WTL("-----Error-----");
             WTL("G.gWriteFile.Error " + exc.getMessage());
+            WTL("-----Error-----");
         }
     }
 
@@ -204,7 +243,9 @@ public class G {
             File gfile = new File(fn);
             gfile.delete();
         } catch (Exception exc) {
+            WTL("-----Error-----");
             WTL("G.gDeleteFile.Error " + exc.getMessage());
+            WTL("-----Error-----");
         }
     }
 
@@ -257,7 +298,9 @@ public class G {
                 WTL("WebAsync.doInBackground Parms=" + ((HTTPAction.equals("sendlog")) ? "Not for sendlog." : HTTPParms));
                 downloadUrl(HTTPUrl);
             } catch (IOException exc) {
+                WTL("-----Error-----");
                 WTL("WebAsync.doInBackground IOException:" + exc.getMessage());
+                WTL("-----Error-----");
             }
             return null;
         }
@@ -315,12 +358,15 @@ public class G {
 
             } catch (SocketTimeoutException exc) {
                 HTTPResult = "TimeOut After " + timeout/1000 + " seconds.";
+                WTL("-----Error-----");
                 WTL("WebAsync.downloadUrl SocketTimeoutException Action=" + G.HTTPAction + ", Code=" + G.HTTPResponseCode + ", Result=" + (G.HTTPResult.equals("") ? "NoResult" : G.HTTPResult));
-
+                WTL("-----Error-----");
             } catch (IOException exc) {
                 HTTPResult = exc.getMessage();
+                WTL("-----Error-----");
                 WTL("WebAsync.downloadUrl IOException=" + exc.getMessage());
                 WTL("WebAsync.downloadUrl Action=" + G.HTTPAction + ", Code=" + G.HTTPResponseCode + ", Result=" + (G.HTTPResult.equals("") ? "NoResult" : G.HTTPResult));
+                WTL("-----Error-----");
             }
             return HTTPResult;
         }

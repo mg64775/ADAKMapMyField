@@ -49,11 +49,11 @@ public class EditDataPoint extends Activity {
     Button btcancel;
     Button btdelete;
     TextView tvstatus;
-
+    Intent returnIntent = new Intent();
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        G.WTL("EditDataPoint.onCreate Start");
+        G.WTL("EditDataPoint.onCreate Start -----EditDataPoint----------");
 
         //=======================Top==========================
         lltop = new LinearLayout(this);  //Master Layout
@@ -141,8 +141,9 @@ public class EditDataPoint extends Activity {
         tv71.setText("\nWhen=" + G.GPSStackList.get(G.StackPosition).get("gwhen") +
                 ", Lat=" + G.GPSStackList.get(G.StackPosition).get("glat") +
                 ", Long=" + G.GPSStackList.get(G.StackPosition).get("glong") +
-                ", Altitude=" + G.GPSStackList.get(G.StackPosition).get("galt") +
-                ", Accuracy=" + G.GPSStackList.get(G.StackPosition).get("gacc"));
+                ", Alt=" + G.GPSStackList.get(G.StackPosition).get("galt") +
+                ", Acc=" + G.GPSStackList.get(G.StackPosition).get("gacc") +
+                ", Zoom=" + G.GPSStackList.get(G.StackPosition).get("gzoom"));
         ll7.addView(tv71);
 
         lltop.addView(ll1);
@@ -179,7 +180,6 @@ public class EditDataPoint extends Activity {
                 G.GPSStackList.get(G.StackPosition).put("gfield", sp1.getSelectedItem().toString());
                 G.GPSStackList.get(G.StackPosition).put("gobject", sp2.getSelectedItem().toString());
                 G.GPSStackList.get(G.StackPosition).put("glabel", et62.getText().toString());
-                Intent returnIntent = new Intent();
                 returnIntent.putExtra("result", "save");
                 setResult(Activity.RESULT_OK, returnIntent);
                 finish();
@@ -192,7 +192,6 @@ public class EditDataPoint extends Activity {
         btcancel.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
         btcancel.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                Intent returnIntent = new Intent();
                 returnIntent.putExtra("result", "cancel");
                 setResult(Activity.RESULT_CANCELED, returnIntent);
                 finish();
@@ -205,7 +204,6 @@ public class EditDataPoint extends Activity {
         btdelete.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
         btdelete.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                Intent returnIntent = new Intent();
                 returnIntent.putExtra("result", G.GPSStackList.get(G.StackPosition).get("rowid"));
                 setResult(Activity.RESULT_OK, returnIntent);
                 finish();
@@ -225,5 +223,9 @@ public class EditDataPoint extends Activity {
 
     public String q(String phrase) {
         return "'" + phrase.replace("'", "''") + "'";
+    }
+    public void onBackPressed() {
+        setResult(Activity.RESULT_CANCELED, returnIntent);
+        this.finish();
     }
 }

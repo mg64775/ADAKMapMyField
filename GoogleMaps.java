@@ -20,6 +20,7 @@ import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
@@ -44,17 +45,16 @@ public class GoogleMaps extends Activity implements OnMapReadyCallback {
     ArrayAdapter<String> spMenuAdapter;
     String spMenuSelection;
     MapView gmview;
+    boolean mapfirsttime = true;
 
     boolean usertouchfield = false;
     boolean usertouchobject = false;
-    int zoomcount = 0;
-    int mapcallcount = 0;
-    float zoom = 0;
+    int stackposition = 0;
     HashMap hm;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        G.WTL("GoogleMaps.onCreate Starts");
+        G.WTL("GoogleMaps.onCreate Starts --------------GoogleMaps------------------");
 
         lltop = new LinearLayout(this);
         lltop.setOrientation(LinearLayout.VERTICAL);
@@ -67,12 +67,12 @@ public class GoogleMaps extends Activity implements OnMapReadyCallback {
         llmap = new LinearLayout(this);
         llmap.setOrientation(LinearLayout.HORIZONTAL);
 
-        G.gdbFillArrayList("select distinct gfield from GPSStack order by gfield", ComboFields);
         spField = new Spinner(this);
         spField.setLayoutParams(new LayoutParams(-1, -2, .4f));
         spFieldAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, ComboFields);
         spField.setAdapter(spFieldAdapter);
         spField.setOnTouchListener(new View.OnTouchListener() {
+            //Prevents initial selection without UI intervention.
             public boolean onTouch(View v, MotionEvent event) {
                 usertouchfield = true;
                 return false;
@@ -82,11 +82,13 @@ public class GoogleMaps extends Activity implements OnMapReadyCallback {
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                 if (!usertouchfield) return;
                 spFieldSelection = (String) parentView.getSelectedItem();
-                G.gdbFillArrayList("select gobject from GPSStack where gfield=" + q(spFieldSelection) + " order by gobject", ComboObjects);
+                G.gdbFillArrayList("select gobject from GPSStack where gfield=" + q(spFieldSelection) + " order by gobject collate nocase", ComboObjects);
                 spObjectAdapter.notifyDataSetChanged();
+                G.MapObject = spObjectAdapter.getItem(0);
                 G.MapField = spFieldSelection;
                 G.MapCaller = "GoogleMaps.spField";
                 gmview.getMapAsync(GoogleMaps.this);
+                usertouchfield = false;
             }
 
             public void onNothingSelected(AdapterView<?> parentView) {
@@ -94,12 +96,12 @@ public class GoogleMaps extends Activity implements OnMapReadyCallback {
         });
         llspinners.addView(spField);
 
-        G.gdbFillArrayList("select gobject from GPSStack where gfield=" + q(spFieldAdapter.getItem(0)) + " order by gobject", ComboObjects);
         spObject = new Spinner(this);
         spObject.setLayoutParams(new LayoutParams(-1, -2, .4f));
         spObjectAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, ComboObjects);
         spObject.setAdapter(spObjectAdapter);
         spObject.setOnTouchListener(new View.OnTouchListener() {
+            //Prevents initial selection without UI intervention.
             public boolean onTouch(View v, MotionEvent event) {
                 usertouchobject = true;
                 return false;
@@ -112,6 +114,7 @@ public class GoogleMaps extends Activity implements OnMapReadyCallback {
                 G.MapObject = spObjectSelection;
                 G.MapCaller = "GoogleMaps.spObject";
                 gmview.getMapAsync(GoogleMaps.this);
+                usertouchobject = false;
             }
 
             public void onNothingSelected(AdapterView<?> parentView) {
@@ -153,23 +156,31 @@ public class GoogleMaps extends Activity implements OnMapReadyCallback {
         lltop.addView(llspinners);
         lltop.addView(llmap);
         setContentView(lltop);
-
-        gmview.getMapAsync(this);
     }
 
     protected void onResume() {
+        //Just after onCreate OR coming back from another screen, we may have more or less datapoints!
         super.onResume();
-//        G.gdbFillArrayList("select distinct gfield from GPSStack order by gfield", ComboFields);
-//        spFieldAdapter.notifyDataSetChanged();
-//        if (G.MapField.equals("")) {
-//            G.MapField = spFieldAdapter.getItem(0);
-//            G.MapObject = "";
-//        } else spField.setSelection(spFieldAdapter.getPosition(G.MapField));
-//
-//        G.gdbFillArrayList("select distinct gobject from GPSStack where gfield=" + q(G.MapField) + " order by gobject", ComboObjects);
-//        spObjectAdapter.notifyDataSetChanged();
-//        if (G.MapObject.equals("")) G.MapObject = spObjectAdapter.getItem(0);
-//        else spObject.setSelection(spObjectAdapter.getPosition(G.MapObject));
+        mapfirsttime = true;
+
+        G.gdbFillArrayList("select distinct gfield from GPSStack order by gfield collate nocase", ComboFields);
+        spFieldAdapter.notifyDataSetChanged();
+        if (G.MapField.equals("")) {
+            spField.setSelection(0);
+            G.MapField = spFieldAdapter.getItem(0);
+        } else {
+            spField.setSelection(spFieldAdapter.getPosition(G.MapField));
+        }
+
+        G.gdbFillArrayList("select distinct gobject from GPSStack where gfield=" + q(G.MapField) + " order by gobject collate nocase", ComboObjects);
+        spObjectAdapter.notifyDataSetChanged();
+        if (G.MapObject.equals("")) {
+            spObject.setSelection(0);
+            G.MapObject = spObjectAdapter.getItem(0);
+        } else {
+            spObject.setSelection(spObjectAdapter.getPosition(G.MapObject));
+        }
+        gmview.getMapAsync(this);
     }
 
     protected void onPause() {
@@ -178,58 +189,77 @@ public class GoogleMaps extends Activity implements OnMapReadyCallback {
 
     public void onMapReady(GoogleMap map) {
         G.WTL("GoogleMaps.onMapReady.Entry Caller=" + G.MapCaller);
-        LatLng current = null;
         LatLng camera = null;
 
         try {
-            map.setMapType(4);
-            map.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
-                public void onCameraChange(CameraPosition cameraPosition) {
-                    zoom = cameraPosition.zoom;
-                }
-            });
+            if (mapfirsttime) { //First call, lay all the points!
+                map.setMapType(4);
 
-            if (G.MapCaller.equals("Splash.btGoogleMaps")) {
-                //If Splash, give all points we have.
-                for (HashMap hm : G.GPSStackList) {
-                    current = new LatLng(Float.valueOf(hm.get("glat").toString()), Float.valueOf(hm.get("glong").toString()));
-                    camera = current;
-                    zoom = 14;   //Standard zoom for all points.
-                    if (!hm.get("gfield").toString().contains(" All")) {
-                        map.addMarker(new MarkerOptions()
-                                .title(hm.get("gfield") + "." + hm.get("gobject"))
-                                .snippet((String) hm.get("glabel"))
-                                .draggable(true)
-                                .position(current));
+                //When someone clicks a marker, reset combos.
+                map.setOnMarkerClickListener( new GoogleMap.OnMarkerClickListener() {
+                    public boolean onMarkerClick(Marker mkr) {
+                        String[] ss = mkr.getTitle().split("\\.");
+                        G.MapField = ss[0];
+                        G.MapObject = ss[1];
+                        spField.setSelection(spFieldAdapter.getPosition(G.MapField));
+                        spObject.setSelection(spObjectAdapter.getPosition(G.MapObject));
+                        return false;
                     }
+                });
+
+                map.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
+                    public void onCameraChange(CameraPosition cameraPosition) {
+                        try {
+                            HashMap hm = G.GPSStackList.get(stackposition);
+                            float camerazoom = cameraPosition.zoom;
+                            Float currentzoom = Float.valueOf(hm.get("gzoom").toString());
+                            if (camerazoom == currentzoom) return;
+
+                            hm.put("gzoom", String.valueOf(camerazoom));
+                            G.gdbExecute("update GPSStack set gzoom=" + camerazoom + " where gfield=" + q(G.MapField) + " and gobject=" + q(G.MapObject));
+                        } catch (Exception exc) {
+                            G.gShipError("GoogleMaps.onCameraChange.Error " + exc.getMessage());
+                        }
+                    }
+                });
+
+                G.MarkerList.clear();    //Put all markers on the maps and save them!
+                for (HashMap hm2 : G.GPSStackList) {
+                    Marker mrk = map.addMarker(new MarkerOptions()
+                            .title(hm2.get("gfield") + "." + hm2.get("gobject"))
+                            .snippet((String) hm2.get("glabel"))
+                            .draggable(true)
+                            .position(new LatLng(Float.valueOf(hm2.get("glat").toString()), Float.valueOf(hm2.get("glong").toString())))
+                    );
+                    G.MarkerList.add(mrk);
+                }
+                mapfirsttime = false;
+            } //End of first time pass.
+
+//==================================================================================================
+            //Get an hashmap of current location..
+            HashMap hm = new HashMap();
+            for (int i = 0; i < G.GPSStackList.size(); i++) {
+                hm = G.GPSStackList.get(i);
+                if (hm.get("gfield").toString().equals(G.MapField) && hm.get("gobject").toString().equals(G.MapObject)) {
+                    stackposition = i;
+                    break;
                 }
             }
 
-            if (G.MapCaller.equals("GoogleMaps.spField")) {
-                //If FieldCombo, give all for " All Fields", give only Field points o/w.
-                for (HashMap hm : G.GPSStackList) {
-                    current = new LatLng(Float.valueOf(hm.get("glat").toString()), Float.valueOf(hm.get("glong").toString()));
-                    camera = current;
-                    if (!hm.get("gfield").toString().contains(" All") && hm.get("gfield").toString().equals(spFieldSelection)) {
-                        map.addMarker(new MarkerOptions()
-                                .title(hm.get("gfield") + "." + hm.get("gobject"))
-                                .snippet((String) hm.get("glabel"))
-                                .draggable(true)
-                                .position(current));
-                    }
+            for (Marker mrk : G.MarkerList) {  //Find the current marker
+                if (mrk.getTitle().equals(G.MapField + "." + G.MapObject)) {
+                    mrk.showInfoWindow();
+                    break;
                 }
             }
 
-            map.animateCamera(CameraUpdateFactory.newLatLngZoom(camera == null ? current : camera, zoom));
+            camera = new LatLng(Float.valueOf(hm.get("glat").toString()), Float.valueOf(hm.get("glong").toString()));
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(camera, Float.valueOf(hm.get("gzoom").toString())));
 
         } catch (Exception exc) {
-            G.WTL("-----Error-----");
-            G.WTL("GoogleMaps.onMapReady.Error " + exc.getLocalizedMessage());
-            G.WTL("GoogleMaps.onMapReady.Error " + exc.getMessage());
-            G.WTL("GoogleMaps.onMapReady.Error " + exc.getCause());
-            G.WTL("GoogleMaps.onMapReady.Error " + exc.getStackTrace());
-            G.WTL("GoogleMaps.onMapReady.Error " + exc.getStackTrace()[0].getLineNumber());
-            G.WTL("-----Error-----");
+            G.gShipError("GoogleMaps.onMapReady.Error " + exc.getMessage());
+            llspinners.setBackgroundColor(Color.parseColor(G.issuebgcolor));
         }
     }
 

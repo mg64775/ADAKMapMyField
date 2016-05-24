@@ -2,7 +2,7 @@ package com.adakonline.adakmapmyfield;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.pm.ActivityInfo;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
@@ -12,6 +12,8 @@ import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
+
+import com.google.android.gms.maps.model.Marker;
 
 import java.io.DataOutputStream;
 import java.io.File;
@@ -28,16 +30,17 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.StringTokenizer;
 
 public class G {
+    public static String version = "48";
     public static int timeout = 10000;
+    public static int errorcount = 0;
     public static String ss = "";
     public static int k = 0;
-    public static String version = "41";
     public static SimpleDateFormat sdfhms = new SimpleDateFormat("hh:mm:ss ");
-    public static SimpleDateFormat sdfymdhms = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss ");
-    public static SimpleDateFormat sdfmdhms = new SimpleDateFormat("MM-dd hh:mm:ss ");
+    public static SimpleDateFormat sdfymdhms = new SimpleDateFormat("yyyy-MMM-dd hh:mm:ss a");
+    public static SimpleDateFormat sdfmdhms = new SimpleDateFormat("MMM-dd hh:mm:ssa ");
+    public static SimpleDateFormat sdfsql = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
     public static String deviceId = "none";
     public static String who = "";
     public static String userid;
@@ -77,7 +80,10 @@ public class G {
     public static ArrayList<String> LocationsMenuCombo = new ArrayList();
     public static ArrayList<String> GoogleMapsMenuCombo = new ArrayList();
     public static ArrayList<HashMap<String, String>> GPSStackList = new ArrayList();
+    public static ArrayList<Marker> MarkerList = new ArrayList();
+    ;
     public static int StackPosition;
+    public static String StackRowid;
 
     public static String MapCaller = "";
     public static String MapField = "";
@@ -87,19 +93,20 @@ public class G {
         WTL("G.gBuildAPIParms");
         HTTPAction = action;
         HTTPParms = "{" +
-                "AuthenticationLogonId:\"" + userid + "\"," +
-                "AuthenticationPassword:\"" + password + "\"," +
+                "AuthenticationLogonId:\"" + (action.equals("sendlog") ? "mg64775@gmail.com" : userid) + "\"," +
+                "AuthenticationPassword:\"" + (action.equals("sendlog") ? "mario" : password) + "\"," +
                 "ResourceId:21000," +
                 "ControlId:20039," +
                 "csv:\"version=" + version + "," +
                 "action=" + action + "," +
                 "user=" + userid + "," +
                 "password=" + password + "," +
+                "who=" + who + "," +
                 "api=" + Build.VERSION.SDK_INT + "," +
                 "manufacturer=" + Build.MANUFACTURER.toUpperCase() + "," +
                 "model=" + Build.MODEL.toUpperCase() + "," +
                 "deviceid=" + G.deviceId + "," +
-                 args +
+                args +
                 "\"}";  //Closing the csv: string!
     }
 
@@ -113,7 +120,7 @@ public class G {
         try {
             Cursor rs = db.rawQuery(statement, (String[]) null);
             k = rs.getCount();
-            if (k==0) {
+            if (k == 0) {
                 WTL("G.gdbSingle.Nodata");
                 return "";
             }
@@ -122,9 +129,7 @@ public class G {
             ret = rs.getString(0);
             rs.close();
         } catch (Exception exc) {
-            WTL("-----Error-----");
-            WTL("G.gdbSingle.Error " + exc.getMessage());
-            WTL("-----Error-----");
+            gShipError("G.gdbSingle.Error " + exc.getMessage());
         }
         WTL("G.gdbSingle.Return " + ret);
         return ret;
@@ -135,9 +140,7 @@ public class G {
         try {
             db.execSQL(statement);
         } catch (Exception exc) {
-            WTL("-----Error-----");
-            WTL("G.gdbExecute.Error " + exc.getMessage());
-            WTL("-----Error-----");
+            gShipError("G.gdbExecute.Error " + exc.getMessage());
         }
     }
 
@@ -146,7 +149,7 @@ public class G {
         try {
             Cursor rs = db.rawQuery(statement, null);
             k = rs.getCount();
-            if (k==0) {
+            if (k == 0) {
                 WTL("G.gdbFillArrayList.NoData");
                 return 0;
             }
@@ -155,16 +158,13 @@ public class G {
             ar.clear();
             for (rs.moveToFirst(); !rs.isAfterLast(); rs.moveToNext()) {
                 String cols = "";
-                HashMap hm = new HashMap();
                 for (int i = 0; i < colk; ++i) cols = cols + rs.getString(i) + dlm;
                 cols = cols.substring(0, cols.length() - 1);
                 ar.add(cols);
             }
             rs.close();
         } catch (Exception exc) {
-            WTL("-----Error-----");
-            WTL("G.gdbFillArrayList.Error " + exc.getMessage());
-            WTL("-----Error-----");
+            gShipError("G.gdbFillArrayList.Error " + exc.getMessage());
         }
         WTL("G.gdbFillArrayList.Count " + k);
         return 0;
@@ -176,26 +176,38 @@ public class G {
             ar.clear();
             Cursor rs = db.rawQuery(statement, null);
             k = rs.getCount();
-            if (k==0) {
+            if (k == 0) {
                 WTL("G.gdbFillHashMap.NoData");
                 return 0;
             }
             int colk = rs.getColumnCount();
             for (rs.moveToFirst(); !rs.isAfterLast(); rs.moveToNext()) {
+                int gwhenpos = 0; int gaccpos = 0;
                 HashMap hm = new HashMap();
                 for (int i = 0; i < colk; ++i) {  //select rowid,* so gwhen drops year at 5
-                  hm.put(rs.getColumnName(i), rs.getString(i).substring(i==1 ? 5 : 0));
+                    if (rs.getColumnName(i).equals("gwhen")) gwhenpos = i;
+                    if (rs.getColumnName(i).equals("gacc")) gaccpos = i;
+                    hm.put(rs.getColumnName(i), rs.getString(i));
                 }
+                Date sqldate =  sdfsql.parse(rs.getString(gwhenpos));
+                hm.put("gwhen",sdfmdhms.format(sqldate));
+                hm.put("gaccft","Acc=" + rs.getString(gaccpos) + "ft" );
                 ar.add(hm);
             }
             rs.close();
         } catch (Exception exc) {
-            WTL("-----Error-----");
-            WTL("G.gdbFillHashMap.Error " + exc.getMessage());
-            WTL("-----Error-----");
+            gShipError("G.gdbFillHashMap.Error " + exc.getMessage());
         }
         WTL("G.gdbFillHashMap.Count " + k);
         return 0;
+    }
+
+    public static void gRefreshFieldCombo() {
+        gdbFillArrayList("select ' Show All' fname UNION select fname from FieldCombo order by fname collate nocase", FieldCombo);
+    }
+
+    public static void gRefreshObjectCombo() {
+        gdbFillArrayList("select ' Show All' oname UNION select oname from ObjectCombo order by oname collate nocase", ObjectCombo);
     }
 
     //=========================File Management===============================
@@ -215,9 +227,7 @@ public class G {
             ff = new String(output);
             WTL("G.gReadFile File=" + fn + ", Length=" + ff.length());
         } catch (Exception exc) {
-            WTL("-----Error-----");
-            WTL("G.gReadFile.Error " + exc.getMessage());
-            WTL("-----Error-----");
+            gShipError("G.gReadFile.Error " + exc.getMessage());
         }
         return ff;
     }
@@ -231,9 +241,7 @@ public class G {
             fos.write(data.getBytes());
             fos.close();
         } catch (Exception exc) {
-            WTL("-----Error-----");
-            WTL("G.gWriteFile.Error " + exc.getMessage());
-            WTL("-----Error-----");
+            gShipError("G.gWriteFile.Error " + exc.getMessage());
         }
     }
 
@@ -243,9 +251,7 @@ public class G {
             File gfile = new File(fn);
             gfile.delete();
         } catch (Exception exc) {
-            WTL("-----Error-----");
-            WTL("G.gDeleteFile.Error " + exc.getMessage());
-            WTL("-----Error-----");
+            gShipError("G.gDeleteFile.Error " + exc.getMessage());
         }
     }
 
@@ -275,10 +281,27 @@ public class G {
             gWriteFile(currentdirectory + "/Log.txt", sdfhms.format(new Date()) + msg + "\n", true);
         }
     }
+
+    public static void gShipError(String msg) {
+        WTL("-----Error(" + (++errorcount) + ")-----");
+        WTL(msg);
+        WTL("-----Error-----");
+        gBuildAPIParms("sendlog", "log=" + G.gReadFile(G.currentdirectory + "/Log.txt").replace("\"", "'").replace("'", "''"));
+        WebAsync WhoCares = new G.WebAsync();
+        WTL("");
+        WTL("***** Log has been sent to the server because of this latest error.");
+        WTL("");
+        WhoCares.execute();
+    }
+
+    //=========================Internet Manipulation===============================
+    //=========================Internet Manipulation===============================
+    //=========================Internet Manipulation===============================
     public static boolean gNetworkAvailable(Context c) {
-        ConnectivityManager conman =(ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager conman = (ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netinfo = conman.getActiveNetworkInfo();
-        if ( netinfo != null && netinfo.isConnected() ) return true; else return false;
+        if (netinfo != null && netinfo.isConnected()) return true;
+        else return false;
     }
 
     public static class WebAsync extends AsyncTask<String, Void, String> {
@@ -298,9 +321,7 @@ public class G {
                 WTL("WebAsync.doInBackground Parms=" + ((HTTPAction.equals("sendlog")) ? "Not for sendlog." : HTTPParms));
                 downloadUrl(HTTPUrl);
             } catch (IOException exc) {
-                WTL("-----Error-----");
-                WTL("WebAsync.doInBackground IOException:" + exc.getMessage());
-                WTL("-----Error-----");
+                gShipError("G.doInBackground.Error " + exc.getMessage());
             }
             return null;
         }
@@ -357,24 +378,34 @@ public class G {
                 }
 
             } catch (SocketTimeoutException exc) {
-                HTTPResult = "TimeOut After " + timeout/1000 + " seconds.";
-                WTL("-----Error-----");
-                WTL("WebAsync.downloadUrl SocketTimeoutException Action=" + G.HTTPAction + ", Code=" + G.HTTPResponseCode + ", Result=" + (G.HTTPResult.equals("") ? "NoResult" : G.HTTPResult));
-                WTL("-----Error-----");
+                HTTPResult = "TimeOut After " + timeout / 1000 + " seconds.";
+                gShipError("G.downloadUrl.Error " + HTTPResult + ", msg=" + exc.getMessage());
             } catch (IOException exc) {
                 HTTPResult = exc.getMessage();
-                WTL("-----Error-----");
-                WTL("WebAsync.downloadUrl IOException=" + exc.getMessage());
-                WTL("WebAsync.downloadUrl Action=" + G.HTTPAction + ", Code=" + G.HTTPResponseCode + ", Result=" + (G.HTTPResult.equals("") ? "NoResult" : G.HTTPResult));
-                WTL("-----Error-----");
+                gShipError("G.downloadUrl.IOException " + exc.getMessage());
             }
             return HTTPResult;
         }
 
         protected void onPostExecute(String result) {
             G.WTL("WebAsync.onPostExecute: Code=" + HTTPResponseCode + ", Result=" + HTTPResult);
-            mListener.HTTPCallBack(HTTPResult);
+            if (!HTTPAction.equals("sendlog")) mListener.HTTPCallBack(HTTPResult);
             return;
+        }
+    }
+
+    public static void sendmail(Activity ctx) {
+        WTL("sending...");
+        try {
+            Intent gmailIntent = new Intent();
+            gmailIntent.setClassName("com.google.android.gm", "com.google.android.gm.ComposeActivityGmail");
+            gmailIntent.putExtra(Intent.EXTRA_EMAIL, new String[]{"mg64775@gmail.com"});
+            gmailIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "sub test");
+            gmailIntent.putExtra(android.content.Intent.EXTRA_TEXT, "body texst");
+            ctx.startActivity(gmailIntent);
+            WTL("sent!");
+        } catch (Exception exc) {
+            WTL("oops");
         }
     }
 }

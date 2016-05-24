@@ -1,9 +1,7 @@
 package com.adakonline.adakmapmyfield;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.graphics.Color;
-import android.net.Uri;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.view.Gravity;
@@ -24,7 +22,7 @@ public class Log extends Activity implements HTTPInterface {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        G.WTL("Log.onCreate Start.");
+        G.WTL("Log.onCreate Start -------Log---------");
         llVertical = new LinearLayout(this);
         llVertical.setBackgroundColor(Color.parseColor(G.initialbgcolor));  //http://www.rapidtables.com/web/color/RGB_Color.htm
         llVertical.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
@@ -82,7 +80,7 @@ public class Log extends Activity implements HTTPInterface {
 
 
         btBottom = new Button(this);
-        btBottom.setText("Bottom");
+        btBottom.setText("Bot");
         btBottom.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
         btBottom.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -92,24 +90,14 @@ public class Log extends Activity implements HTTPInterface {
         llHorizontal.addView(btBottom);
 
         btSend = new Button(this);
-        btSend.setText("SendLog");
+        btSend.setText("Send");
         btSend.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
         btSend.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (G.who.isEmpty()) {
-                    Intent send = new Intent(Intent.ACTION_SENDTO);
-                    String uriText = "mailto:" + Uri.encode("mg64775@gmail.com") +
-                            "?subject=" + Uri.encode("Android Log File") +
-                            "&body=" + Uri.encode(G.gReadFile(G.currentdirectory + "/Log.txt"));
-                    Uri uri = Uri.parse(uriText);
-                    send.setData(uri);
-                    startActivity(Intent.createChooser(send, "Send mail..."));
-                } else {
-                    G.gBuildAPIParms("sendlog", G.gReadFile(G.currentdirectory + "/Log.txt").replace("\"", "'"));
-                    G.WebAsync WhoCares = new G.WebAsync();
-                    WhoCares.setListener(Log.this);
-                    WhoCares.execute();
-                }
+                G.gBuildAPIParms("sendlog", "log=" + G.gReadFile(G.currentdirectory + "/Log.txt").replace("\"", "'").replace("'", "''"));
+                G.WebAsync WhoCares = new G.WebAsync();
+                WhoCares.setListener(Log.this);
+                WhoCares.execute();
             }
         });
         llHorizontal.addView(btSend);

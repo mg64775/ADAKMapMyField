@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.widget.Space;
+import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -54,6 +55,7 @@ public class Logon extends Activity implements HTTPInterface {
         lltop.addView(tvpassword);
 
         etpassword = new EditText(this);
+        etpassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         etpassword.setText(G.password);
         lltop.addView(etpassword);
 
@@ -117,7 +119,7 @@ public class Logon extends Activity implements HTTPInterface {
             return;
         }
 
-        WTM("Processing logon...");
+        WTM("Logon.btLogon Processing logon...");
         G.gBuildAPIParms("logon", "");
         G.WebAsync FromTheNet = new G.WebAsync();
         FromTheNet.setListener(this);
@@ -141,14 +143,15 @@ public class Logon extends Activity implements HTTPInterface {
                 FromTheNet.setListener(this);
                 FromTheNet.execute();
             } else {
-                WTM("Logon.HTTPCallBack We could not log you on! Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);
+               G.WTL("Logon.HTTPCallBack Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);
+                WTM("Logon.HTTPCallBack Authentication failure!");
             }
             return;
         }
 
         if (G.HTTPAction.equals("getfieldcombo")) {
             if (G.HTTPResponseCode == 200 && !G.HTTPResult.contains("IsError")) {
-                WTM("Fetching object list...");
+                WTM("Splash.btLogonLogoff Fetching Field List...");
                 String[] ServerFieldList = G.HTTPResult.split(G.dlmrowregex)[1].split(G.dlmregex);
                 for (String item: ServerFieldList) {
                     if (G.FieldCombo.indexOf(item) == -1){
@@ -156,7 +159,7 @@ public class Logon extends Activity implements HTTPInterface {
                     }
                 }
 
-                G.gdbFillArrayList("select * from FieldCombo order by fname", G.FieldCombo);
+                G.gRefreshFieldCombo();
                 G.gBuildAPIParms("getobjectcombo", "");
                 G.WebAsync FromTheNet = new G.WebAsync();
                 FromTheNet.setListener(this);
@@ -169,14 +172,14 @@ public class Logon extends Activity implements HTTPInterface {
 
         if (G.HTTPAction.equals("getobjectcombo")) {
             if (G.HTTPResponseCode == 200 && !G.HTTPResult.contains("IsError")) {
-                WTM(tvstatus.getText() + "(Ok)");
+                WTM("Splash.btLogonLogoff Fetching Object List...");
                 String[] ServerObjectList = G.HTTPResult.split(G.dlmrowregex)[1].split(G.dlmregex);
                 for (String item: ServerObjectList) {
                     if (G.ObjectCombo.indexOf(item) == -1){
                         G.gdbExecute("Insert into ObjectCombo (oName) select " + q(item));
                     }
                 }
-                G.gdbFillArrayList("select * from ObjectCombo order by oname", G.ObjectCombo);
+                G.gRefreshObjectCombo();
                 finish();
             } else {
                 WTM("Logon.HTTPCallBack Issue pulling Object list. Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);

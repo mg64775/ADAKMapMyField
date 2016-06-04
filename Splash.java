@@ -26,13 +26,11 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.IOException;
 import java.util.Date;
-import java.util.Locale;
 
-public class Splash extends AppCompatActivity {
+public class Splash extends AppCompatActivity implements HTTPInterface {
     //AppCompatActivity gives us the title bar!
     String ss;
-    String versionindb;
-    LinearLayout ll;
+    LinearLayout lltop;
     LinearLayout lb;
     TextView tvPurpose;
     TextView tvMsg;
@@ -44,15 +42,14 @@ public class Splash extends AppCompatActivity {
     File sd;
     File logprevious;
     boolean rc = false;
-    float zoomdefault = 18;
+    int k = 0;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
             G.deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID).toUpperCase();
+            G.currentdirectory = getFilesDir().toString();
 
-            //Starting with API=23, Write+Location are dangerous!
-            if (Build.VERSION.SDK_INT >= 23) ADAKCheckWritePermission();
             sd = new File(G.currentdirectory);
             if (!sd.canWrite()) finish();        //User refused the write operations, yirk!
 
@@ -69,11 +66,12 @@ public class Splash extends AppCompatActivity {
             try {
                 if (sd.exists()) sd.renameTo(logprevious);
                 sd.createNewFile();
+                G.WTL("Splash.onCreate =====App Starts=====");
                 G.WTL("Splash.onCreate Starts -------------Splash-------------");
-                G.WTL("Splash.onCreate Permissions OK");
                 G.WTL("Splash.onCreate File " + G.currentdirectory + "/Log.txt created");
             } catch (IOException exc) {
                 Toast.makeText(this, "Issue creating file " + G.currentdirectory + "/Log.txt", Toast.LENGTH_LONG).show();
+                lltop.setBackgroundColor(Color.parseColor(G.issuebgcolor));
                 finish();
             }
 
@@ -82,90 +80,66 @@ public class Splash extends AppCompatActivity {
             G.WTL("Splash.onCreate DeviceId=" + G.deviceId);
             G.WTL("Splash.onCreate Device Running Android API Version=" + VERSION.SDK_INT);
 
-            Date buildDate = new Date(BuildConfig.ADAKCompiledTime);
-            G.WTL("Splash.onCreate MapMyField Version=" + G.version + ", Created=" + G.sdfymdhms.format(buildDate));
-            setTitle("ADAK MapMyField Version " + G.version + ", Created=" + G.sdfymdhms.format(buildDate));
+            G.gbuilddate = G.sdfymdhms.format(new Date(BuildConfig.ADAKCompiledTime));
+            G.WTL("Splash.onCreate MapMyField Version=" + G.version + ", Created=" + G.gbuilddate);
+            setTitle("ADAK MapMyField Version " + G.version);
 
             G.db = openOrCreateDatabase(G.currentdirectory + "/ADAK.db", Context.MODE_PRIVATE, null);
-            G.db.setLocale(Locale.getDefault());  //Advise db we need to offset zulu.
+            if (G.gdbSingle("select count(*) from sqlite_master where name='ValuePairs'").equals("1")) { //Case sensitive tablename.
+                G.userid = G.gdbSingle("select vValue from ValuePairs where vName='userid'");
+                G.password = G.gdbSingle("select vValue from ValuePairs where vName='password'");
+                G.dbversion = G.gdbSingle("select vValue from ValuePairs where vName='version'");
+            }
 
-            G.userid = G.gdbSingle("select vValue from ValuePairs where vName='userid'");
-            G.password = G.gdbSingle("select vValue from ValuePairs where vName='password'");
-            versionindb = G.gdbSingle("select vValue from ValuePairs where vName='version'");
-
-            if (!G.version.equals(versionindb)) { //Redo all this on new version only!
-                G.WTL("Splash.onCreate Refreshing DB from version=" + versionindb + " with version=" + G.version);
+            //if ((versionindb.compareTo(G.version) < 0)) { //Redo all this on new version only!
+            //if (1==1){  //First time for debugging new version
+            if ((G.dbversion.compareTo("56") < 0)) { //Redo all this if version < nn
+                G.WTL("Splash.onCreate Refreshing DB from version=" + G.dbversion + " with version=" + G.version);
                 G.gdbExecute("drop table if exists ValuePairs");
                 G.gdbExecute("drop table if exists FieldCombo");
                 G.gdbExecute("drop table if exists ObjectCombo");
                 G.gdbExecute("drop table if exists GPSStack");
+
                 G.gdbExecute("Create table ValuePairs ( vName text, vValue text )");
                 G.gdbExecute("insert into ValuePairs select 'version', " + q(G.version));
                 G.gdbExecute("insert into ValuePairs (vName,vValue) select 'userid'," + q(G.userid));
                 G.gdbExecute("insert into ValuePairs (vName,vValue) select 'password'," + q(G.password));
 
-                G.gdbExecute("Create table FieldCombo ( fName text )");
-                G.gdbExecute("Create table ObjectCombo ( oName text )");
-                G.gdbExecute("Create table GPSStack ( gwhen datetime, gfield text, gobject text," +
+                G.gdbExecute("Create table GPSStack ( gwhen datetime, gfield text collate nocase, gobject text collate nocase," +
                         "glat real, glong real, galt integer, gacc integer, " +
-                        "glabel text default 'EditMe', gzoom real default " + zoomdefault + ")");
-
-                G.gdbExecute("Insert into FieldCombo (fName) select 'Argentina'");
-                G.gdbExecute("Insert into FieldCombo (fName) select 'Canada'");
-                G.gdbExecute("Insert into FieldCombo (fName) select 'Québec'");
-                G.gdbExecute("Insert into FieldCombo (fName) select 'Italy'");
-                G.gdbExecute("Insert into FieldCombo (fName) select 'Uruguay'");
-
-                G.gdbExecute("Insert into ObjectCombo (oName) select 'Montevideo'");
-                G.gdbExecute("Insert into ObjectCombo (oName) select 'Toronto'");
-                G.gdbExecute("Insert into ObjectCombo (oName) select 'Trois-Rivières'");
-                G.gdbExecute("Insert into ObjectCombo (oName) select 'Montreal'");
-                G.gdbExecute("Insert into ObjectCombo (oName) select 'Venice'");
+                        "glabel text default 'Hold & Drag Balloon to Move!', gzoom real default 18)"); //Default zoom here.
                 G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel) " +
                         "select datetime('now','localtime'), 'Canada','Toronto',43.6532, -79.3832, 11, 6, 'TClabel'");
                 G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel) " +
                         "select datetime('now','localtime'), 'Canada','Montreal',45.5017, -73.5673, 12, 7, 'CMlabel'");
                 G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel) " +
                         "select datetime('now','localtime'), 'Québec','Trois-Rivières',46.3547, -72.5838, 12, 7, '3Riv'");
-                G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel) " +
-                        "select datetime('now','localtime'), 'Italy','Venice',45.4408, 12.3155, 13, 8, 'IVlabel'");
-                G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel) " +
-                        "select datetime('now','localtime'), 'Uruguay','Montevideo',-34.9011, -56.1645, 13, 8, 'IVlabel'");
+                G.gdbExecute("Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) " +
+                        "select datetime('now','localtime'), 'Italy','Venice',45.4408, 12.3155, 13, 8");
+
+                G.gdbExecute("Create table FieldCombo ( fName text collate nocase)");
+                G.gdbExecute("Insert into FieldCombo (fName) select 'Canada'");
+                G.gdbExecute("Insert into FieldCombo (fName) select 'Québec'");
+                G.gdbExecute("Insert into FieldCombo (fName) select 'Italy'");
+
+                G.gdbExecute("Create table ObjectCombo ( oName text collate nocase)");
+                G.gdbExecute("Insert into ObjectCombo (oName) select 'Toronto'");
+                G.gdbExecute("Insert into ObjectCombo (oName) select 'Trois-Rivières'");
+                G.gdbExecute("Insert into ObjectCombo (oName) select 'Montreal'");
+                G.gdbExecute("Insert into ObjectCombo (oName) select 'Venice'");
             }
-
- //This makes it easier to update the menus...
-            G.gdbExecute("drop table if exists LocationsMenuCombo");
-            G.gdbExecute("Create table LocationsMenuCombo ( mName text )");
-            G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'Menu'");
-            G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'GoogleMaps'");
-            G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'AddField'");
-            G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'AddObject'");
-            G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'DeleteField'");
-            G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'DeleteObject'");
-            G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'DeletePoints'");
-            G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'UploadPoints'");
-            G.gdbExecute("Insert into LocationsMenuCombo (mName) select 'DeleteAll'");
-
-            //This makes it easier to update the menus...
-            G.gdbExecute("drop table if exists GoogleMapsMenuCombo");
-            G.gdbExecute("Create table GoogleMapsMenuCombo (mName text )");
-            G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'Menu'");
-            G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'MapField'");
-            G.gdbExecute("Insert into GoogleMapsMenuCombo (mName) select 'MapObject'");
 
             G.gRefreshFieldCombo();
             G.gRefreshObjectCombo();
-            G.gdbFillArrayList("select * from LocationsMenuCombo", G.LocationsMenuCombo);
-            G.gdbFillArrayList("select * from GoogleMapsMenuCombo", G.GoogleMapsMenuCombo);
 
             G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
             G.WTL("Splash.onCreate Fields=" + (G.FieldCombo.size() - 1) + ", Objects=" + (G.ObjectCombo.size() - 1) + ", Points=" + G.GPSStackList.size());
 
-            ll = new LinearLayout(this);
-            ll.setBackgroundColor(Color.parseColor(G.initialbgcolor));  //http://www.rapidtables.com/web/color/RGB_Color.htm
-            ll.setLayoutParams(new LayoutParams(-1, -1));
-            ll.setOrientation(LinearLayout.VERTICAL);
-            ll.setGravity(Gravity.LEFT);
+            lltop = new LinearLayout(this);
+            lltop.setBackgroundColor(Color.parseColor(G.initialbgcolor));  //http://www.rapidtables.com/web/color/RGB_Color.htm
+            lltop.setLayoutParams(new LayoutParams(-1, -1));
+            lltop.setOrientation(LinearLayout.VERTICAL);
+            lltop.setGravity(Gravity.LEFT);
 
             lb = new LinearLayout(this); //Layout for buttons.
             lb.setLayoutParams(new ActionBar.LayoutParams(-1, -2));
@@ -173,12 +147,12 @@ public class Splash extends AppCompatActivity {
             lb.setGravity(Gravity.CENTER + Gravity.BOTTOM);
 
             tvPurpose = new TextView(this);
-            tvPurpose.setText(G.purpose);
+            tvPurpose.setText("\nVersion Created=" + G.gbuilddate + "\n\n" + G.purpose);
             tvPurpose.setLayoutParams(new LayoutParams(-1, -1, 2));
             tvPurpose.setGravity(Gravity.CENTER);
             tvPurpose.setVerticalScrollBarEnabled(true);
             tvPurpose.setMovementMethod(new ScrollingMovementMethod());
-            ll.addView(tvPurpose);  // not a tv
+            lltop.addView(tvPurpose);  // not a tv
 
             btLogonLogoff = new Button(this);
             btLogonLogoff.setAllCaps(false);
@@ -235,15 +209,21 @@ public class Splash extends AppCompatActivity {
             });
             lb.addView(btHelp);
 
-            ll.addView(lb);
+            lltop.addView(lb);
 
             tvMsg = new TextView(this);
             tvMsg.setGravity(Gravity.CENTER);
-            ll.addView(tvMsg);
+            lltop.addView(tvMsg);
 
-            setContentView(ll);
+            setContentView(lltop);
+
+            //Starting with API=23, GPS Location are dangerous!
+            if (Build.VERSION.SDK_INT >= 23) ADAKCheckPermission();
+
+            //GetIP();
         } catch (Exception exc) {
-            G.gShipError("Splash.onCreate.Error " + exc.getMessage());
+            G.gShipError(exc);
+            lltop.setBackgroundColor(Color.parseColor(G.issuebgcolor));
         }
     }
 
@@ -253,29 +233,27 @@ public class Splash extends AppCompatActivity {
         WTM("Splash.onResume You have " + G.GPSStackList.size() + " Data Point(s) active.");
     }
 
-    public void ADAKCheckWritePermission() {
-        boolean hasPermission;
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // Check which request we're responding to
+        if (requestCode == 123) return;
+    }
 
-        hasPermission = (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
-        if (!hasPermission)
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 111);
-
-        hasPermission = (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
-        if (!hasPermission)
+    public void ADAKCheckPermission() {
+        boolean hasPermission = (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
+        if (hasPermission) {
+            G.PermissionLocation = true;
+            G.WTL("Splash.ADAKCheckPermission ACCESS_FINE_LOCATION OK!");
+        } else
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 222);
     }
 
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-            WTS("Splash.onRequestPermissionsResult Refusing a permission aborts the application!");
-            finish();
-        }
     }
 
     public void btLogonLogoff(View vw) {
         if (!G.gNetworkAvailable(this)) {
-            WTS("Splash.btLogon Network not available! Working offline.");
+            WTS("Splash.btLogonLogoff Network not available! Working offline.");
             return;
         }
 
@@ -307,13 +285,35 @@ public class Splash extends AppCompatActivity {
 
     public void btLog(View vw) {
         G.WTL("Splash.btLog Click");
-        Intent loginintent = new Intent(this, Log.class);
-        startActivity(loginintent);
+        startActivity(new Intent(this, Log.class));
     }
 
     public void btHelp(View vw) {
         G.WTL("Splash.btHelp Click");
         WTS("Splash.Help not implemented yet.");
+    }
+
+    public void GetIP() {
+        //The issue here is that if WIFI, we get the local ip (useless).
+        //SQL stored proc asking for ip will give IIS service ip(useless).
+        //Going to the web asking for ip gets the ip but how about all browsers?
+        G.HTTPAction = "ip";
+        G.WebAsync FromTheNet = new G.WebAsync();
+        FromTheNet.setListener(this);
+        FromTheNet.execute();
+
+    }
+
+    public void HTTPCallBack(String myResult) {
+        G.WTL("Splash.HTTPCallBack Start.");
+        if (G.HTTPAction.equals("ip")) {
+            if (G.HTTPResponseCode == 200 && !G.HTTPResult.contains("Issue")) {
+                WTS("Splash.HTTPCallBack Log has been sent for review.");
+                WTS(G.HTTPResult);
+            } else {
+                WTS("Splash.HTTPCallBack Issue sending log.");
+            }
+        }
     }
 
     public String q(String phrase) {
@@ -326,6 +326,8 @@ public class Splash extends AppCompatActivity {
     }
 
     public void WTM(String msg) {
+        if (msg == null || msg.indexOf(" ") == -1)
+            msg = "Strange Input msg=null or no blank in it!";
         tvMsg.setText(msg.substring(msg.indexOf(" ") + 1));
         G.WTL(msg);
     }

@@ -12,7 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class Log extends Activity implements HTTPInterface {
-    LinearLayout llVertical;
+    LinearLayout lltop;
     LinearLayout llHorizontal;
     TextView tvLog;
     Button btWhichLog;
@@ -22,88 +22,92 @@ public class Log extends Activity implements HTTPInterface {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        G.WTL("Log.onCreate Start -------Log---------");
-        llVertical = new LinearLayout(this);
-        llVertical.setBackgroundColor(Color.parseColor(G.initialbgcolor));  //http://www.rapidtables.com/web/color/RGB_Color.htm
-        llVertical.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
-        llVertical.setOrientation(LinearLayout.VERTICAL);
+        try {
+            G.WTL("Log.onCreate Start -------Log---------");
+            lltop = new LinearLayout(this);
+            lltop.setBackgroundColor(Color.parseColor(G.initialbgcolor));  //http://www.rapidtables.com/web/color/RGB_Color.htm
+            lltop.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+            lltop.setOrientation(LinearLayout.VERTICAL);
 
-        llHorizontal = new LinearLayout(this);
-        llHorizontal.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
-        llHorizontal.setOrientation(LinearLayout.HORIZONTAL);
-        llHorizontal.setGravity(Gravity.CENTER_HORIZONTAL);
+            llHorizontal = new LinearLayout(this);
+            llHorizontal.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+            llHorizontal.setOrientation(LinearLayout.HORIZONTAL);
+            llHorizontal.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        tvLog = new TextView(this);
-        tvLog.setGravity(Gravity.BOTTOM);
-        tvLog.setVerticalScrollBarEnabled(true);
-        tvLog.setMovementMethod(new ScrollingMovementMethod());
-        tvLog.setLayoutParams(new LinearLayout.LayoutParams(-1, -1, 1));
-        String ff = G.gReadFile(G.currentdirectory + "/Log.txt");
-        if (ff.contains("---Error---"))
-            llVertical.setBackgroundColor(Color.parseColor(G.issuebgcolor));
-        tvLog.setText(ff);
-        llVertical.addView(tvLog);
+            tvLog = new TextView(this);
+            tvLog.setGravity(Gravity.BOTTOM);
+            tvLog.setVerticalScrollBarEnabled(true);
+            tvLog.setMovementMethod(new ScrollingMovementMethod());
+            tvLog.setLayoutParams(new LinearLayout.LayoutParams(-1, -1, 1));
+            String ff = G.gReadFile(G.currentdirectory + "/Log.txt");
+            if (ff.contains("---Error---"))
+                lltop.setBackgroundColor(Color.parseColor(G.issuebgcolor));
+            tvLog.setText(ff);
+            lltop.addView(tvLog);
 
-        btWhichLog = new Button(this);
-        btWhichLog.setText("Previous");
-        btWhichLog.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
-        btWhichLog.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                if (btWhichLog.getText().equals("Previous")) {
-                    String ff = G.gReadFile(G.currentdirectory + "/PreviousLog.txt");
-                    if (ff.contains("---Error---"))
-                        llVertical.setBackgroundColor(Color.parseColor(G.issuebgcolor));
-                    else llVertical.setBackgroundColor(Color.parseColor(G.initialbgcolor));
-                    tvLog.setText(ff);
-                    btWhichLog.setText("Current");
-                } else {
-                    String ff = G.gReadFile(G.currentdirectory + "/Log.txt");
-                    if (ff.contains("---Error---"))
-                        llVertical.setBackgroundColor(Color.parseColor(G.issuebgcolor));
-                    else llVertical.setBackgroundColor(Color.parseColor(G.initialbgcolor));
-                    tvLog.setText(ff);
-                    btWhichLog.setText("Previous");
+            btWhichLog = new Button(this);
+            btWhichLog.setText("Previous");
+            btWhichLog.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
+            btWhichLog.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    if (btWhichLog.getText().equals("Previous")) {
+                        String ff = G.gReadFile(G.currentdirectory + "/PreviousLog.txt");
+                        if (ff.contains("---Error("))
+                            lltop.setBackgroundColor(Color.parseColor(G.issuebgcolor));
+                        else lltop.setBackgroundColor(Color.parseColor(G.initialbgcolor));
+                        tvLog.setText(ff);
+                        btWhichLog.setText("Current");
+                    } else {
+                        String ff = G.gReadFile(G.currentdirectory + "/Log.txt");
+                        if (ff.contains("---Error("))
+                            lltop.setBackgroundColor(Color.parseColor(G.issuebgcolor));
+                        else lltop.setBackgroundColor(Color.parseColor(G.initialbgcolor));
+                        tvLog.setText(ff);
+                        btWhichLog.setText("Previous");
+                    }
                 }
-            }
-        });
-        llHorizontal.addView(btWhichLog);
+            });
+            llHorizontal.addView(btWhichLog);
 
-        btTop = new Button(this);
-        btTop.setText("Top");
-        btTop.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
-        btTop.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                tvLog.scrollTo(0, 0);
-            }
-        });
-        llHorizontal.addView(btTop);
+            btTop = new Button(this);
+            btTop.setText("Top");
+            btTop.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
+            btTop.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    tvLog.scrollTo(0, 0);
+                }
+            });
+            llHorizontal.addView(btTop);
 
 
-        btBottom = new Button(this);
-        btBottom.setText("Bot");
-        btBottom.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
-        btBottom.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                tvLog.scrollTo(0, tvLog.getLayout().getLineTop(tvLog.getLineCount() - 15));
-            }
-        });
-        llHorizontal.addView(btBottom);
+            btBottom = new Button(this);
+            btBottom.setText("Bot");
+            btBottom.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
+            btBottom.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    tvLog.scrollTo(0, tvLog.getLayout().getLineTop(tvLog.getLineCount() - 15));
+                }
+            });
+            llHorizontal.addView(btBottom);
 
-        btSend = new Button(this);
-        btSend.setText("Send");
-        btSend.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
-        btSend.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                G.gBuildAPIParms("sendlog", "log=" + G.gReadFile(G.currentdirectory + "/Log.txt").replace("\"", "'").replace("'", "''"));
-                G.WebAsync WhoCares = new G.WebAsync();
-                WhoCares.setListener(Log.this);
-                WhoCares.execute();
-            }
-        });
-        llHorizontal.addView(btSend);
+            btSend = new Button(this);
+            btSend.setText("Send");
+            btSend.setLayoutParams(new LinearLayout.LayoutParams(-2, -2, 0));
+            btSend.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    G.gBuildAPIParms("sendlog", "log=" + G.gReadFile(G.currentdirectory + "/Log.txt").replace("\"", "'").replace("'", "''"));
+                    G.WebAsync WhoCares = new G.WebAsync();
+                    WhoCares.setListener(Log.this);
+                    WhoCares.execute();
+                }
+            });
+            llHorizontal.addView(btSend);
 
-        llVertical.addView(llHorizontal);
-        setContentView(llVertical);
+            lltop.addView(llHorizontal);
+            setContentView(lltop);
+        } catch (Exception exc) {
+            G.gShipError(exc);
+        }
     }
 
     protected void onPause() {

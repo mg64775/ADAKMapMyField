@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
@@ -14,8 +15,10 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.Space;
+import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
@@ -29,8 +32,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Locations extends Activity implements LocationListener, HTTPInterface {
@@ -51,8 +53,8 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     boolean GPSActive = false;
     int GPSGoodPoints = 0;
     int GPSBadPoints = 0;
-    int GPSGoodPointsMax = 5;
-    int GPSBadPointsMax = 5;
+    int GPSGoodPointsMax = 1;
+    int GPSBadPointsMax = 1;
     boolean GPSFirstCallback = false;
     String LocationWhen;
     static String LocationField;
@@ -62,7 +64,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     int LocationAlt;
     int LocationAcc;
 
-    LinearLayout llvertical;
+    LinearLayout lltop;
     LinearLayout llspinners;
     LinearLayout llgps;
     Space spacer;
@@ -78,190 +80,215 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     String lvCols[];
     SimpleAdapter lvLocationsAdapter;
 
+    public static ArrayList<String> LocationsMenuCombo = new ArrayList();
+
     EditText etInput;  //For dialog work
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setTitle("ADAK MapMyField Version " + G.version);
-        G.WTL("Locations.onCreate Start ------------Locations--------------");
+        try {
+            setTitle("ADAK MapMyField Version " + G.version);
+            G.WTL("Locations.onCreate Start ------------Locations--------------");
 
-        llvertical = new LinearLayout(this);
-        llvertical.setLayoutParams(new LayoutParams(-2, -1));
-        llvertical.setOrientation(LinearLayout.VERTICAL);
-        llvertical.setBackgroundColor(Color.parseColor(G.initialbgcolor));
+            lltop = new LinearLayout(this);
+            lltop.setLayoutParams(new LayoutParams(-2, -1));
+            lltop.setOrientation(LinearLayout.VERTICAL);
+            lltop.setBackgroundColor(Color.parseColor(G.initialbgcolor));
 
-        llspinners = new LinearLayout(this);
-        llspinners.setOrientation(LinearLayout.HORIZONTAL);
-        llspinners.setBackgroundColor(Color.parseColor(G.initialbgcolor));
+            llspinners = new LinearLayout(this);
+            llspinners.setOrientation(LinearLayout.HORIZONTAL);
+            llspinners.setBackgroundColor(Color.parseColor(G.initialbgcolor));
 
-        LocationField = G.FieldCombo.get(0); //.toString();
-        spField = new Spinner(this);
-        spField.setLayoutParams(new LayoutParams(-1, -2, 1));
-        spFieldAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.FieldCombo);
-        spField.setAdapter(spFieldAdapter);
-        spField.setOnTouchListener(new View.OnTouchListener() {
-            //Prevents initial selection without UI intervention.
-            public boolean onTouch(View v, MotionEvent event) {
-                usertouchfield = true;
-                return false;
-            }
-        });
+            LocationField = G.FieldCombo.get(0); //.toString();
+            spField = new Spinner(this);
+            spField.setLayoutParams(new LayoutParams(-1, -2, 1));
+            spFieldAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_item, G.FieldCombo);
+            spField.setAdapter(spFieldAdapter);
+            spField.setOnTouchListener(new View.OnTouchListener() {
+                //Prevents initial selection without UI intervention.
+                public boolean onTouch(View v, MotionEvent event) {
+                    usertouchfield = true;
+                    return false;
+                }
+            });
 
-        spField.setOnItemSelectedListener(new OnItemSelectedListener() {
-            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-                LocationField = (String) parentView.getSelectedItem();
-                G.WTL("Locations.spFieldSelected " + LocationField);
-                if (usertouchfield) {
-                    btGPS.setEnabled(spObject.getSelectedItemPosition() * position == 0 ? false : true);
-                    if (position == 0) {  //This is the Show All selection!
-                        G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
-                    } else {
-                        G.gdbFillHashMap("select rowid,* from GPSStack where gfield='" + LocationField + "' order by gwhen desc", G.GPSStackList);
+            spField.setOnItemSelectedListener(new OnItemSelectedListener() {
+                public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                    LocationField = (String) parentView.getSelectedItem();
+                    G.WTL("Locations.spFieldSelected " + LocationField);
+                    if (usertouchfield) {
+                        btGPS.setEnabled(spObject.getSelectedItemPosition() * position == 0 ? false : true);
+                        if (position == 0) {  //This is the Show All selection!
+                            G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
+                            spObject.setSelection(0);  //This is the Show All for objects
+                        } else {
+                            G.gdbFillHashMap("select rowid,* from GPSStack where gfield='" + LocationField + "' order by gwhen desc", G.GPSStackList);
+                            G.MapField = spFieldAdapter.getItem(0);
+                        }
+                        lvLocationsAdapter.notifyDataSetChanged();
                     }
-                    lvLocationsAdapter.notifyDataSetChanged();
+                    usertouchfield = false;
                 }
-                usertouchfield = false;
-            }
 
-            public void onNothingSelected(AdapterView<?> parentView) {
-            }
-        });
-        llspinners.addView(spField);
-
-        LocationObject = (String) G.ObjectCombo.get(0);
-        spObject = new Spinner(this);
-        spObject.setLayoutParams(new LayoutParams(-1, -2, 1));
-        spObjectAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.ObjectCombo);
-        spObject.setAdapter(spObjectAdapter);
-        spObject.setOnTouchListener(new View.OnTouchListener() {
-            //Prevents initial selection without UI intervention.
-            public boolean onTouch(View v, MotionEvent event) {
-                usertouchobject = true;
-                return false;
-            }
-        });
-
-        spObject.setOnItemSelectedListener(new OnItemSelectedListener() {
-            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-                if (usertouchobject) {
-                    btGPS.setEnabled(spField.getSelectedItemPosition() * position == 0 ? false : true);
-                    LocationObject = (String) parentView.getSelectedItem();
-                    G.WTL("Locations.spObjectSelected " + parentView.getSelectedItem());
-                    usertouchobject = false;
+                public void onNothingSelected(AdapterView<?> parentView) {
                 }
-            }
+            });
+            llspinners.addView(spField);
 
-            public void onNothingSelected(AdapterView<?> parentView) {
-            }
-        });
-        llspinners.addView(spObject);
-
-        spMenu = new Spinner(this);
-        spMenu.setLayoutParams(new LayoutParams(-1, -2, 1));
-        spMenuAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, G.LocationsMenuCombo);
-        spMenu.setAdapter(spMenuAdapter);
-        spMenu.setOnItemSelectedListener(new OnItemSelectedListener() {
-            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-                G.WTL("Locations.spMenuSelected " + (String) parentView.getSelectedItem());
-                switch ((String) parentView.getSelectedItem()) {
-                    case "GoogleMaps":
-                        if (G.GPSStackList.size() > 0) {
-                            G.MapCaller = "Locations.spMenu";
-                            G.MapField = spField.getSelectedItem().toString().startsWith(" ") ? "" : LocationField;
-                            G.MapObject = spObject.getSelectedItem().toString().startsWith(" ") ? "" : LocationObject;
-                            startActivity(new Intent(getBaseContext(), GoogleMaps.class));
-                        } else
-                            WTS("At least one data point needed for GoogleMaps");
-                        break;
-                    case "AddField":
-                        ADAKAlertText("Adding a field...", "AddField", "Enter a new field name...");
-                        break;
-                    case "AddObject":
-                        ADAKAlertText("Adding an object...", "AddObject", "Enter a new object name...");
-                        break;
-                    case "DeleteField":
-                        if (!spField.getSelectedItem().toString().startsWith("~"))
-                            ADAKAlertOkCancel("Deleting field " + LocationField + "...", "DeleteField", "This field and all its associated data points will be deleted.");
-                        break;
-                    case "DeleteObject":
-                        if (!spObject.getSelectedItem().toString().startsWith("~"))
-                            ADAKAlertOkCancel("Deleting object " + LocationObject + "...", "DeleteObject", "This object and all its associated data points will be deleted.");
-                        break;
-                    case "DeletePoints":
-                        ADAKAlertOkCancel("Deleting All DataPoints...", "DeletePoints", "All Points will be deleted.");
-                        break;
-                    case "DeleteAll":
-                        ADAKAlertOkCancel("Deleting Field & Objects & DataPoints...", "DeleteEverything", "Everything on your Android will be deleted.");
-                        break;
-                    case "UploadPoints":
-                        UploadDataPoints();
-                        break;
-                    case "Menu":
-                        break;
-                    default:
-                        WTS("Not implemented:" + (String) parentView.getSelectedItem());
+            LocationObject = (String) G.ObjectCombo.get(0);
+            spObject = new Spinner(this);
+            spObject.setLayoutParams(new LayoutParams(-1, -2, 1));
+            spObjectAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_item, G.ObjectCombo);
+            spObject.setAdapter(spObjectAdapter);
+            spObject.setOnTouchListener(new View.OnTouchListener() {
+                //Prevents initial selection without UI intervention.
+                public boolean onTouch(View v, MotionEvent event) {
+                    usertouchobject = true;
+                    return false;
                 }
-                parentView.setSelection(0);
+            });
+
+            spObject.setOnItemSelectedListener(new OnItemSelectedListener() {
+                public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                    if (usertouchobject) {
+                        btGPS.setEnabled(spField.getSelectedItemPosition() * position == 0 ? false : true);
+                        LocationObject = (String) parentView.getSelectedItem();
+                        G.WTL("Locations.spObjectSelected " + parentView.getSelectedItem());
+                        usertouchobject = false;
+                    }
+                }
+
+                public void onNothingSelected(AdapterView<?> parentView) {
+                }
+            });
+            llspinners.addView(spObject);
+
+            LocationsMenuCombo.clear();
+            LocationsMenuCombo.add("Menu");
+            LocationsMenuCombo.add("GoogleMaps");
+            LocationsMenuCombo.add("AddField");
+            LocationsMenuCombo.add("AddObject");
+            LocationsMenuCombo.add("DeleteField");
+            LocationsMenuCombo.add("DeleteObject");
+            LocationsMenuCombo.add("DeletePoints");
+            LocationsMenuCombo.add("UploadPoints");
+            LocationsMenuCombo.add("DeleteAll");
+
+            spMenu = new Spinner(this);
+            spMenu.setLayoutParams(new LayoutParams(-1, -2, 1));
+            spMenuAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, LocationsMenuCombo) ;
+            spMenu.setAdapter(spMenuAdapter);
+            spMenu.setOnItemSelectedListener(new OnItemSelectedListener() {
+                public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                    G.WTL("Locations.spMenuSelected " + (String) parentView.getSelectedItem());
+                    switch ((String) parentView.getSelectedItem()) {
+                        case "GoogleMaps":
+                            if (G.GPSStackList.size() > 0) {
+                                G.MapCaller = "Locations.spMenu";
+                                G.MapField = spField.getSelectedItem().toString().startsWith(" ") ? "" : LocationField;
+                                G.MapObject = spObject.getSelectedItem().toString().startsWith(" ") ? "" : LocationObject;
+                                startActivity(new Intent(getBaseContext(), GoogleMaps.class));
+                            } else
+                                WTS("At least one data point needed for GoogleMaps");
+                            break;
+                        case "AddField":
+                            ADAKAlertText("Adding a field...", "AddField", "Enter a new field name...");
+                            break;
+                        case "AddObject":
+                            ADAKAlertText("Adding an object...", "AddObject", "Enter a new object name...");
+                            break;
+                        case "DeleteField":
+                            if (!spField.getSelectedItem().toString().startsWith("~"))
+                                ADAKAlertOkCancel("Deleting field " + LocationField + "...", "DeleteField", "This field and all its associated data points will be deleted.");
+                            break;
+                        case "DeleteObject":
+                            if (!spObject.getSelectedItem().toString().startsWith("~"))
+                                ADAKAlertOkCancel("Deleting object " + LocationObject + "...", "DeleteObject", "This object and all its associated data points will be deleted.");
+                            break;
+                        case "DeletePoints":
+                            ADAKAlertOkCancel("Deleting All DataPoints...", "DeletePoints", "All Points will be deleted.");
+                            break;
+                        case "DeleteAll":
+                            ADAKAlertOkCancel("Deleting Field & Objects & DataPoints...", "DeleteEverything", "Everything on your Android will be deleted.");
+                            break;
+                        case "UploadPoints":
+                            UploadDataPoints();
+                            break;
+                        case "Menu":
+                            break;
+                        default:
+                            WTS("Not implemented:" + (String) parentView.getSelectedItem());
+                    }
+                    parentView.setSelection(0);
+                }
+
+                public void onNothingSelected(AdapterView<?> parentView) {
+                }
+            });
+            llspinners.addView(spMenu);
+            lltop.addView(llspinners);
+
+            llgps = new LinearLayout(this);
+            llgps.setOrientation(LinearLayout.HORIZONTAL);
+
+            btGPS = new Button(this);
+            btGPS.setText("New DataPoint");
+            btGPS.setEnabled(false);
+            btGPS.setLayoutParams(new LayoutParams(-2, -2));
+            btGPS.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View arg0) {
+                    G.WTL("Locations.btGPS Click.");
+                    GPSGoodPoints = 0;
+                    GPSBadPoints = 0;
+                    GPSActive = true;
+                }
+            });
+            llgps.addView(btGPS);
+
+            tvCurrentLocation = new TextView(this);
+            tvCurrentLocation.setLayoutParams(new LayoutParams(-2, -2));
+            tvCurrentLocation.setText("Waiting for your GPS to activate...");
+            llgps.addView(tvCurrentLocation);
+
+            spacer = new Space(this);
+            spacer.setLayoutParams(new LayoutParams(-1, -2, 1f));
+            llgps.addView(spacer);
+
+            lltop.addView(llgps);
+
+            lvLocations = new ListView(this);
+            lvLocations.setBackgroundColor(Color.WHITE);
+            lvCols = new String[]{"gwhen", "gfield", "gobject", "gaccft"};
+            lvLocationsAdapter = new SimpleAdapter(this, G.GPSStackList, R.layout.locations_row, lvCols,
+                    new int[]{R.id.tvWhen, R.id.tvField, R.id.tvObject, R.id.tvAccuracy});
+            lvLocations.setAdapter(lvLocationsAdapter);
+            lvLocations.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                public void onItemClick(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                    G.StackPosition = position;
+                    G.StackRowid = G.GPSStackList.get(G.StackPosition).get("growid");
+                    G.MapField = G.GPSStackList.get(G.StackPosition).get("gfield");
+                    G.MapObject = G.GPSStackList.get(G.StackPosition).get("gobject");
+                    ADAKAlert3("Edit DataPoint...", G.MapField + "." + G.MapObject);
+                }
+            });
+            lltop.addView(lvLocations);
+
+            setContentView(lltop);
+
+            GPSLocManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            //Permission already processed in Splash, but check required here for some reason!
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+
+            if (savedInstanceState != null) {
+                //Otherwise on screen timeout, the activity restarts losing state!
+                spField.setSelection(savedInstanceState.getInt("spField", 0));
+                spObject.setSelection(savedInstanceState.getInt("spObject", 0));
             }
 
-            public void onNothingSelected(AdapterView<?> parentView) {
-            }
-        });
-        llspinners.addView(spMenu);
-        llvertical.addView(llspinners);
-
-        llgps = new LinearLayout(this);
-        llgps.setOrientation(LinearLayout.HORIZONTAL);
-
-        btGPS = new Button(this);
-        btGPS.setText("New DataPoint");
-        btGPS.setEnabled(false);
-        btGPS.setLayoutParams(new LayoutParams(-2, -2));
-        btGPS.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View arg0) {
-                G.WTL("Locations.btGPS Click.");
-                GPSGoodPoints = 0;
-                GPSBadPoints = 0;
-                GPSActive = true;
-            }
-        });
-        llgps.addView(btGPS);
-
-        tvCurrentLocation = new TextView(this);
-        tvCurrentLocation.setLayoutParams(new LayoutParams(-2, -2));
-        tvCurrentLocation.setText("Waiting for your GPS to activate...");
-        llgps.addView(tvCurrentLocation);
-
-        spacer = new Space(this);
-        spacer.setLayoutParams(new LayoutParams(-1, -2, 1f));
-        llgps.addView(spacer);
-
-        llvertical.addView(llgps);
-
-        lvLocations = new ListView(this);
-        lvLocations.setBackgroundColor(Color.WHITE);
-        lvCols = new String[]{"gwhen", "gfield", "gobject", "gaccft"};
-        lvLocationsAdapter = new SimpleAdapter(this, G.GPSStackList, R.layout.locations_row, lvCols,
-                new int[]{R.id.tvWhen, R.id.tvField, R.id.tvObject, R.id.tvAccuracy});
-        lvLocations.setAdapter(lvLocationsAdapter);
-        lvLocations.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            public void onItemClick(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-                G.StackPosition = position;
-                G.StackRowid = G.GPSStackList.get(G.StackPosition).get("growid");
-                G.MapField = G.GPSStackList.get(G.StackPosition).get("gfield");
-                G.MapObject = G.GPSStackList.get(G.StackPosition).get("gobject");
-                ADAKAlert3("Edit DataPoint...", G.MapField + "." + G.MapObject);
-            }
-        });
-        llvertical.addView(lvLocations);
-
-        setContentView(llvertical);
-
-        GPSLocManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        //Permission already processed in Splash, but check required here for some reason!
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
-
-        G.WTL("Locations.onCreate End.");
+        } catch (Exception exc) {
+            G.gShipError(exc);
+            lltop.setBackgroundColor(Color.parseColor(G.issuebgcolor));
+        }
     }
 
     //---------------------------------------Overides---------------------------------------------------
@@ -269,16 +296,27 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
 //---------------------------------------Overides---------------------------------------------------
     protected void onResume() {
         super.onResume();
-        //Permission already processed in Splash, but check required here for some reason!
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
-        //Squigly red line below is fine, its only a warning!
-        GPSLocManager.requestLocationUpdates("gps", 1000L, -1.0F, this);
-        G.WTL("Locations.onResume GPS.requestUpdates");
+        try {
+            //Permission already processed in Splash, but check required here for some reason!
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+            //Squigly red line below is fine, its only a warning!
+            GPSLocManager.requestLocationUpdates("gps", 1000L, -1.0F, this);
+            G.WTL("Locations.onResume GPS.requestUpdates");
+        } catch (Exception exc) {
+            G.gShipError(exc);
+            lltop.setBackgroundColor(Color.parseColor(G.issuebgcolor));
+        }
     }
 
     protected void onPause() {
         super.onPause();
         G.WTL("Locations.onPause GPS.removeUpdates");
+    }
+
+    protected void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+        savedInstanceState.putInt("spField", spField.getSelectedItemPosition());
+        savedInstanceState.putInt("spObject", spObject.getSelectedItemPosition());
     }
 
     //---------------------------------------Functions---------------------------------------------------
@@ -472,9 +510,9 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
     }
 
     public void InsertDataPoint() {
-        ss = "Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc,glabel,gzoom) " +
+        ss = "Insert into GPSStack (gwhen,gfield,gobject,glat,glong,galt,gacc) " +
                 "select datetime('now','localtime')," + q(LocationField) + "," + q(LocationObject) + "," +
-                LocationLat + "," + LocationLong + "," + LocationAlt + "," + LocationAcc + "," + q("EditMe") + ",16";
+                LocationLat + "," + LocationLong + "," + LocationAlt + "," + LocationAcc;
         G.gdbExecute(ss);
         G.gdbFillHashMap("select rowid,* from GPSStack where gfield='" + LocationField + "' order by gwhen desc", G.GPSStackList);
         lvLocationsAdapter.notifyDataSetChanged();
@@ -576,21 +614,22 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                 })
                 .setNegativeButton("Edit", new android.content.DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
-                        startActivityForResult(new Intent(getBaseContext(), EditDataPoint.class), 1);
+                        startActivityForResult(new Intent(getBaseContext(), EditDataPoint.class), 1234);
                     }
                 }).show();
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        //The only case is when EditDataPoint is called.
         String result = data.getStringExtra("result");
-        if (requestCode == 1) {
+        if (requestCode == 1234) {
             if (resultCode == Activity.RESULT_OK) {
                 if (result.equals("save")) {
                     lvLocationsAdapter.notifyDataSetChanged();
                     return;
                 }
-                if (result.matches("[0-9]")) {
-                    DeleteDataPoint(Integer.parseInt(result));
+                if (result.matches("delete=[0-9]")) {
+                    DeleteDataPoint(Integer.parseInt(result.substring(result.indexOf("=") + 1)));
                     return;
                 }
             }
@@ -598,6 +637,5 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                 return;
             }
         }
-
     }
 }

@@ -127,7 +127,7 @@ public class Splash extends AppCompatActivity implements HTTPInterface {
                 G.gdbExecute("Insert into ObjectCombo (oName) select 'Trois-Rivières'");
                 G.gdbExecute("Insert into ObjectCombo (oName) select 'Montreal'");
                 G.gdbExecute("Insert into ObjectCombo (oName) select 'Venice'");
-            }
+            }else G.WTL("Splash.onCreate No Need to refresh DB from OldVversion=" + G.dbversion + " with NewVersion=" + G.version);
 
             G.gRefreshFieldCombo();
             G.gRefreshObjectCombo();

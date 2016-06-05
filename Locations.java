@@ -24,6 +24,7 @@ import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.LinearLayout.LayoutParams;
 import android.widget.ListView;
@@ -122,7 +123,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                             G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
                             spObject.setSelection(0);  //This is the Show All for objects
                         } else {
-                            G.gdbFillHashMap("select rowid,* from GPSStack where gfield='" + LocationField + "' order by gwhen desc", G.GPSStackList);
+                            G.gdbFillHashMap("select rowid,* from GPSStack where gfield=" + q(LocationField) + " order by gwhen desc", G.GPSStackList);
                             G.MapField = spFieldAdapter.getItem(0);
                         }
                         lvLocationsAdapter.notifyDataSetChanged();
@@ -506,7 +507,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
         GPSActive = false;
         InsertDataPoint();
         G.WTL("Locations.onLocationChanged Location Stored");
-        G.WTL("Lat=" + LocationLat + ", Long=" + LocationLong + ", Alt=" + LocationAlt + ", Acc=" + LocationAcc);
+        G.WTL("Locations.onLocationChanged Lat=" + LocationLat + ", Long=" + LocationLong + ", Alt=" + LocationAlt + ", Acc=" + LocationAcc);
     }
 
     public void InsertDataPoint() {
@@ -514,7 +515,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                 "select datetime('now','localtime')," + q(LocationField) + "," + q(LocationObject) + "," +
                 LocationLat + "," + LocationLong + "," + LocationAlt + "," + LocationAcc;
         G.gdbExecute(ss);
-        G.gdbFillHashMap("select rowid,* from GPSStack where gfield='" + LocationField + "' order by gwhen desc", G.GPSStackList);
+        G.gdbFillHashMap("select rowid,* from GPSStack where gfield=" + q(LocationField) + " order by gwhen desc", G.GPSStackList);
         lvLocationsAdapter.notifyDataSetChanged();
         G.WTL("Locations.InsertDataPoint Location " + LocationField + "." + LocationObject);
     }
@@ -542,8 +543,8 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                         }
 
                         if (adakdialog.equals("AddObject")) {
-                            if (G.gdbSingle("select count(*) from ObjectCombo where oname = '" + etInput.getText().toString() + "'").equals("0")) {
-                                G.gdbExecute("Insert into ObjectCombo (oName) select '" + etInput.getText().toString().trim() + "'");
+                            if (G.gdbSingle("select count(*) from ObjectCombo where oname=" + q(etInput.getText().toString())).equals("0")) {
+                                G.gdbExecute("Insert into ObjectCombo (oName) select " + q(etInput.getText().toString().trim()));
                                 G.gRefreshObjectCombo();
                                 spObjectAdapter.notifyDataSetChanged();
                                 G.WTL("Locations.ADAKAlertText.AddObject " + (String) spObject.getSelectedItem());

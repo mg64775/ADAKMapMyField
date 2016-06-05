@@ -35,7 +35,7 @@ import java.util.HashMap;
 public class G {
     public static String ip = "";
     public static boolean PermissionLocation = false;
-    public static String version = "56";
+    public static String version = "57";
     public static String dbversion = "0";
     public static int regulartimeout = 15000;
     public static int sendlogtimeout = 60000;

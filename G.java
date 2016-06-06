@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -15,7 +14,6 @@ import android.util.Log;
 
 import com.google.android.gms.maps.model.Marker;
 
-import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,11 +29,12 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 
 public class G {
     public static String ip = "";
     public static boolean PermissionLocation = false;
-    public static String version = "57";
+    public static String version = "58";
     public static String dbversion = "0";
     public static int regulartimeout = 15000;
     public static int sendlogtimeout = 60000;
@@ -44,10 +43,11 @@ public class G {
     public static String ss = "";
     public static String gbuilddate;
     public static int k = 0;
-    public static SimpleDateFormat sdfhms = new SimpleDateFormat("hh:mm:ss ");
-    public static SimpleDateFormat sdfymdhms = new SimpleDateFormat("yyyy-MMM-dd hh:mm:ss a");
-    public static SimpleDateFormat sdfmdhms = new SimpleDateFormat("MMM-dd hh:mm:ssa ");
-    public static SimpleDateFormat sdfsql = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+    public static int rc = 0;
+    public static SimpleDateFormat sdfhms = new SimpleDateFormat("hh:mm:ss ", Locale.US);
+    public static SimpleDateFormat sdfymdhms = new SimpleDateFormat("yyyy-MMM-dd hh:mm:ss a", Locale.US);
+    public static SimpleDateFormat sdfmdhms = new SimpleDateFormat("MMM-dd hh:mm:ssa ", Locale.US);
+    public static SimpleDateFormat sdfsql = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.US);
     public static String deviceId = "";
     public static String who = "";
     public static String userid = "";
@@ -78,11 +78,10 @@ public class G {
     public static String actionbgcolor = "#0000FF"; //http://www.rapidtables.com/web/color/RGB_Color.htm
     public static String issuebgcolor = "#FFCCCC"; //http://www.rapidtables.com/web/color/RGB_Color.htm
 
-    public static ArrayList<String> FieldCombo = new ArrayList();
+    public static ArrayList FieldCombo = new ArrayList<String>();
     public static ArrayList<String> ObjectCombo = new ArrayList();
     public static ArrayList<HashMap<String, String>> GPSStackList = new ArrayList();
     public static ArrayList<Marker> MarkerList = new ArrayList();
-    ;
     public static int StackPosition;
     public static String StackRowid;
 
@@ -121,7 +120,7 @@ public class G {
     public static String gdbSingle(String statement) {
         String ret = "";
         try {
-            Cursor rs = db.rawQuery(statement, (String[]) null);
+            Cursor rs = db.rawQuery(statement, null);
             k = rs.getCount();
 
             rs.moveToFirst();
@@ -217,12 +216,10 @@ public class G {
                 isr.close();
                 ff = new String(output);
                 WTL("G.gReadFile File=" + fn + ", Length=" + ff.length());
-                return ff;
             } catch (Exception exc) {
                 gShipError(exc);
-            } finally {
-                return ff;
             }
+        return ff;
     }
 
     public static void gWriteFile(String fn, String data, boolean append) {
@@ -238,14 +235,16 @@ public class G {
             }
     }
 
-    public static void gDeleteFile(String fn) {
+    public static boolean gDeleteFile(String fn) {
+        boolean retcode = false;
             try {
                 WTL("G.gDeleteFile File=" + fn);
                 File gfile = new File(fn);
-                gfile.delete();
+                retcode = gfile.delete();  //true if delete worked!
             } catch (Exception exc) {
                 gShipError(exc);
             }
+        return retcode;
     }
     //=========================Internet Manipulation===============================
     //=========================Internet Manipulation===============================
@@ -253,8 +252,7 @@ public class G {
     public static boolean gNetworkAvailable(Context c) {
         ConnectivityManager conman = (ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netinfo = conman.getActiveNetworkInfo();
-        if (netinfo != null && netinfo.isConnected()) return true;
-        else return false;
+        return netinfo != null && netinfo.isConnected();
     }
 
     public static class WebAsync extends AsyncTask<String, Void, String> {
@@ -284,18 +282,22 @@ public class G {
                 URL e = new URL(myurl);
                 HttpURLConnection conn;
                 if (HTTPAction.equals("ip")) {    //Maps request is a GET.
-                    e = new URL("https://www.google.com/search?q=what+is+my+ip");
+                    e = new URL("https://api.ipify.org");
                     conn = (HttpURLConnection) e.openConnection();
                     conn.setRequestMethod("GET");
+                    conn.setRequestProperty("Content-Type", "application/json");
                     conn.setDoInput(true);
                     conn.connect();
                     HTTPResponseCode = conn.getResponseCode();
                     if (HTTPResponseCode == 200) {
-                        BufferedReader in = new BufferedReader(new InputStreamReader(e.openStream()));
-                        char[] inputLine = new char[2048];
-                        in.read(inputLine, 0, 2040);
-                        WTL(inputLine.toString());
-                        in.close();
+                        InputStream is = conn.getInputStream();
+                        Reader reader = new InputStreamReader(is, "UTF-8");
+                        char[] inputLine = new char[100];
+                        reader.read(inputLine);
+                        is.close();
+                        String ret = new String(inputLine);
+                        HTTPResult = ret.substring(0, ret.indexOf(0));
+                        WTL(HTTPResult);
                     }
                     return HTTPResult;
                 }
@@ -347,7 +349,6 @@ public class G {
         protected void onPostExecute(String result) {
             G.WTL("WebAsync.onPostExecute: Code=" + HTTPResponseCode + ", Result=" + HTTPResult);
             if (!HTTPAction.equals("sendlog")) mListener.HTTPCallBack(HTTPResult);
-            return;
         }
     }
 
@@ -373,11 +374,11 @@ public class G {
         String lcPhrase = argPhrase.toLowerCase();
         String lcDLM1 = argDLM1.toLowerCase();
         String lcDLM2 = argDLM2.toLowerCase();
-        if (lcPhrase.indexOf(lcDLM1) == -1 && lcDLM1 != "" || lcPhrase.indexOf(lcDLM2) == -1 && lcDLM2 != "") {
+        if ((!lcPhrase.contains(lcDLM1) && !lcDLM1.equals("")) || (!lcPhrase.contains(lcDLM2) && !lcDLM2.equals(""))) {
             return "";
         } else {
             int p1 = lcPhrase.indexOf(lcDLM1) + lcDLM1.length();
-            int p2 = lcDLM2 == "" ? lcPhrase.length() : lcPhrase.substring(p1).indexOf(lcDLM2) + p1;
+            int p2 = lcDLM2.equals("") ? lcPhrase.length() : lcPhrase.substring(p1).indexOf(lcDLM2) + p1;
             return p2 == -1 ? "" : argPhrase.substring(p1, p2);
         }
     }

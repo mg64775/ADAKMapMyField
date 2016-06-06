@@ -127,7 +127,8 @@ public class Splash extends AppCompatActivity implements HTTPInterface {
                 G.gdbExecute("Insert into ObjectCombo (oName) select 'Trois-Rivières'");
                 G.gdbExecute("Insert into ObjectCombo (oName) select 'Montreal'");
                 G.gdbExecute("Insert into ObjectCombo (oName) select 'Venice'");
-            }else G.WTL("Splash.onCreate No Need to refresh DB from OldVversion=" + G.dbversion + " with NewVersion=" + G.version);
+            } else
+                G.WTL("Splash.onCreate No Need to refresh DB from OldVversion=" + G.dbversion + " with NewVersion=" + G.version);
 
             G.gRefreshFieldCombo();
             G.gRefreshObjectCombo();
@@ -220,7 +221,7 @@ public class Splash extends AppCompatActivity implements HTTPInterface {
             //Starting with API=23, GPS Location are dangerous!
             if (Build.VERSION.SDK_INT >= 23) ADAKCheckPermission();
 
-            //GetIP();
+            GetIP();
         } catch (Exception exc) {
             G.gShipError(exc);
             lltop.setBackgroundColor(Color.parseColor(G.issuebgcolor));
@@ -301,18 +302,16 @@ public class Splash extends AppCompatActivity implements HTTPInterface {
         G.WebAsync FromTheNet = new G.WebAsync();
         FromTheNet.setListener(this);
         FromTheNet.execute();
-
     }
 
     public void HTTPCallBack(String myResult) {
         G.WTL("Splash.HTTPCallBack Start.");
         if (G.HTTPAction.equals("ip")) {
-            if (G.HTTPResponseCode == 200 && !G.HTTPResult.contains("Issue")) {
-                WTS("Splash.HTTPCallBack Log has been sent for review.");
-                WTS(G.HTTPResult);
-            } else {
-                WTS("Splash.HTTPCallBack Issue sending log.");
-            }
+            if (G.HTTPResponseCode == 200) {
+                WTS("IP=" + G.HTTPResult);
+                G.ip = G.HTTPResult;
+            } else
+                G.WTL("Splash.GetIp HTTPResponseCode=" + G.HTTPResponseCode);
         }
     }
 

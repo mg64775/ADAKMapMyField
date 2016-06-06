@@ -90,7 +90,7 @@ public class Logon extends Activity implements HTTPInterface {
             btcancel.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
             btcancel.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
-                    cdt.cancel();
+                    if (cdt != null) cdt.cancel();
                     setResult(-1);
                     finish();
                 }
@@ -99,7 +99,6 @@ public class Logon extends Activity implements HTTPInterface {
             lltop.addView(llbuttons);
 
             tvstatus = new TextView(this);
-            WTM("Status...");
             tvstatus.setGravity(Gravity.CENTER);
             tvstatus.setLayoutParams(new LinearLayout.LayoutParams(-1, -2, 0));
 
@@ -126,10 +125,11 @@ public class Logon extends Activity implements HTTPInterface {
             }
 
             WTM("Logon.btLogon Processing logon...");
-            cdt = new CountDownTimer(G.regulartimeout,1000) {
+            cdt = new CountDownTimer(G.regulartimeout, 1000) {
                 public void onTick(long millisUntilFinished) {
                     tvstatus.setText(tvstatus.getText() + ".");
                 }
+
                 public void onFinish() {
                 }
             }.start();
@@ -158,10 +158,11 @@ public class Logon extends Activity implements HTTPInterface {
                     G.gdbExecute("insert into ValuePairs (vName,vValue) select 'password'," + q(G.password));
 
                     WTM("Splash.btLogonLogoff Fetching field list...");
-                    cdt = new CountDownTimer(G.regulartimeout,1000) {
+                    cdt = new CountDownTimer(G.regulartimeout, 1000) {
                         public void onTick(long millisUntilFinished) {
                             tvstatus.setText(tvstatus.getText() + ".");
                         }
+
                         public void onFinish() {
                         }
                     }.start();
@@ -181,10 +182,11 @@ public class Logon extends Activity implements HTTPInterface {
                 if (G.HTTPResponseCode == 200 && !G.HTTPResult.contains("IsError")) {
                     cdt.cancel();
                     WTM("Splash.btLogonLogoff Fetching Field List...");
-                    cdt = new CountDownTimer(G.regulartimeout,1000) {
+                    cdt = new CountDownTimer(G.regulartimeout, 1000) {
                         public void onTick(long millisUntilFinished) {
                             tvstatus.setText(tvstatus.getText() + ".");
                         }
+
                         public void onFinish() {
                         }
                     }.start();
@@ -222,7 +224,6 @@ public class Logon extends Activity implements HTTPInterface {
                 } else {
                     WTM("Logon.HTTPCallBack Issue pulling Object list. Code=" + G.HTTPResponseCode + ", Result=" + G.HTTPResult);
                 }
-                return;
             }
         } catch (Exception exc) {
             G.gShipError(exc);

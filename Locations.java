@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
@@ -15,16 +14,13 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.Space;
-import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.LinearLayout.LayoutParams;
 import android.widget.ListView;
@@ -100,7 +96,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
             llspinners.setOrientation(LinearLayout.HORIZONTAL);
             llspinners.setBackgroundColor(Color.parseColor(G.initialbgcolor));
 
-            LocationField = G.FieldCombo.get(0); //.toString();
+            LocationField = G.FieldCombo.get(0).toString(); //.toString();
             spField = new Spinner(this);
             spField.setLayoutParams(new LayoutParams(-1, -2, 1));
             spFieldAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_item, G.FieldCombo);
@@ -118,7 +114,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                     LocationField = (String) parentView.getSelectedItem();
                     G.WTL("Locations.spFieldSelected " + LocationField);
                     if (usertouchfield) {
-                        btGPS.setEnabled(spObject.getSelectedItemPosition() * position == 0 ? false : true);
+                        btGPS.setEnabled(GPSFirstCallback && spField.getSelectedItemPosition() > 0 && spObject.getSelectedItemPosition() > 0);
                         if (position == 0) {  //This is the Show All selection!
                             G.gdbFillHashMap("select rowid,* from GPSStack order by gwhen desc", G.GPSStackList);
                             spObject.setSelection(0);  //This is the Show All for objects
@@ -136,7 +132,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
             });
             llspinners.addView(spField);
 
-            LocationObject = (String) G.ObjectCombo.get(0);
+            LocationObject = G.ObjectCombo.get(0);
             spObject = new Spinner(this);
             spObject.setLayoutParams(new LayoutParams(-1, -2, 1));
             spObjectAdapter = new ArrayAdapter(this, android.R.layout.simple_spinner_item, G.ObjectCombo);
@@ -152,7 +148,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
             spObject.setOnItemSelectedListener(new OnItemSelectedListener() {
                 public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
                     if (usertouchobject) {
-                        btGPS.setEnabled(spField.getSelectedItemPosition() * position == 0 ? false : true);
+                        btGPS.setEnabled(GPSFirstCallback && spField.getSelectedItemPosition() > 0 && spObject.getSelectedItemPosition() > 0);
                         LocationObject = (String) parentView.getSelectedItem();
                         G.WTL("Locations.spObjectSelected " + parentView.getSelectedItem());
                         usertouchobject = false;
@@ -177,11 +173,11 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
 
             spMenu = new Spinner(this);
             spMenu.setLayoutParams(new LayoutParams(-1, -2, 1));
-            spMenuAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, LocationsMenuCombo) ;
+            spMenuAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, LocationsMenuCombo);
             spMenu.setAdapter(spMenuAdapter);
             spMenu.setOnItemSelectedListener(new OnItemSelectedListener() {
                 public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-                    G.WTL("Locations.spMenuSelected " + (String) parentView.getSelectedItem());
+                    G.WTL("Locations.spMenuSelected " + parentView.getSelectedItem());
                     switch ((String) parentView.getSelectedItem()) {
                         case "GoogleMaps":
                             if (G.GPSStackList.size() > 0) {
@@ -218,7 +214,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                         case "Menu":
                             break;
                         default:
-                            WTS("Not implemented:" + (String) parentView.getSelectedItem());
+                            WTS("Not implemented:" + parentView.getSelectedItem());
                     }
                     parentView.setSelection(0);
                 }
@@ -477,6 +473,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
             tvCurrentLocation.setText("  GPS Ready: Select Field and Object first, Accuracy=" + LocationAcc + "ft.");
             if (!GPSFirstCallback) {
                 GPSFirstCallback = true;
+                btGPS.setEnabled(spField.getSelectedItemPosition() > 0 && spObject.getSelectedItemPosition() > 0);
                 G.WTL("Locations.onLocationChanged GPS Ready!");
             }
             return;
@@ -535,7 +532,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                                 G.gdbExecute("Insert into FieldCombo (fName) select '" + etInput.getText().toString().trim() + "'");
                                 G.gRefreshFieldCombo();
                                 spFieldAdapter.notifyDataSetChanged();
-                                G.WTL("Locations.ADAKAlertText.AddField " + (String) spField.getSelectedItem());
+                                G.WTL("Locations.ADAKAlertText.AddField " + spField.getSelectedItem());
                                 spField.setSelection(spFieldAdapter.getPosition(etInput.getText().toString()));
                             } else {
                                 WTS("Locations.ADAKAlertText AddField: Field already exists.");
@@ -547,7 +544,7 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                                 G.gdbExecute("Insert into ObjectCombo (oName) select " + q(etInput.getText().toString().trim()));
                                 G.gRefreshObjectCombo();
                                 spObjectAdapter.notifyDataSetChanged();
-                                G.WTL("Locations.ADAKAlertText.AddObject " + (String) spObject.getSelectedItem());
+                                G.WTL("Locations.ADAKAlertText.AddObject " + spObject.getSelectedItem());
                                 spObject.setSelection(spObjectAdapter.getPosition(etInput.getText().toString()));
                             } else {
                                 WTS("Locations.ADAKAlertText AddObject: Object already exists.");
@@ -610,7 +607,6 @@ public class Locations extends Activity implements LocationListener, HTTPInterfa
                 })
                 .setNeutralButton("Cancel", new android.content.DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
-                        return;
                     }
                 })
                 .setNegativeButton("Edit", new android.content.DialogInterface.OnClickListener() {

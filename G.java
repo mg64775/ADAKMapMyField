@@ -52,6 +52,7 @@ public class G {
     public static String who = "";
     public static String userid = "";
     public static String password = "";
+    public static String HTTPGetIPUrl = "https://api.ipify.org";
     public static String HTTPDevUrl = "http://api.farmproducemanager.com/mapi/ControlData/DoAction";
     public static String HTTPProdUrl = "";
 
@@ -104,6 +105,7 @@ public class G {
                 "user=" + userid + "," +
                 "password=" + password + "," +
                 "who=" + who + "," +
+                "ip=" + ip + "," +
                 "api=" + Build.VERSION.SDK_INT + "," +
                 "manufacturer=" + Build.MANUFACTURER.toUpperCase() + "," +
                 "model=" + Build.MODEL.toUpperCase() + "," +
@@ -266,7 +268,7 @@ public class G {
             try {
                 HTTPResult = "";
                 HTTPResponseCode = -1;
-                HTTPUrl = HTTPDevUrl;   //Parms are posted here.
+                HTTPUrl = HTTPAction.equals("ip") ? HTTPGetIPUrl : HTTPDevUrl;   //Parms are posted here.
                 WTL("WebAsync.doInBackground Action=" + HTTPAction);
                 WTL("WebAsync.doInBackground URL=" + HTTPUrl);
                 WTL("WebAsync.doInBackground Parms=" + ((HTTPAction.equals("sendlog")) ? "Not for sendlog." : HTTPParmsForLog));
@@ -282,7 +284,6 @@ public class G {
                 URL e = new URL(myurl);
                 HttpURLConnection conn;
                 if (HTTPAction.equals("ip")) {    //Maps request is a GET.
-                    e = new URL("https://api.ipify.org");
                     conn = (HttpURLConnection) e.openConnection();
                     conn.setRequestMethod("GET");
                     conn.setRequestProperty("Content-Type", "application/json");
@@ -297,7 +298,6 @@ public class G {
                         is.close();
                         String ret = new String(inputLine);
                         HTTPResult = ret.substring(0, ret.indexOf(0));
-                        WTL(HTTPResult);
                     }
                     return HTTPResult;
                 }
@@ -338,9 +338,11 @@ public class G {
 
             } catch (SocketTimeoutException exc) {
                 HTTPResult = "TimeOut After " + regulartimeout / 1000 + " seconds.";
+                WTL(HTTPResult);
                 gShipError(exc);
             } catch (IOException exc) {
                 HTTPResult = exc.getMessage();
+                WTL(HTTPResult);
                 gShipError(exc);
             }
             return HTTPResult;

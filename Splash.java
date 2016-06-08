@@ -51,7 +51,7 @@ public class Splash extends AppCompatActivity implements HTTPInterface {
             G.currentdirectory = getFilesDir().toString();
 
             sd = new File(G.currentdirectory);
-            if (!sd.canWrite()) finish();        //User refused the write operations, yirk!
+            if (!sd.canWrite()) finish();
 
             if (!sd.exists()) {
                 sd.mkdir();
@@ -234,11 +234,6 @@ public class Splash extends AppCompatActivity implements HTTPInterface {
         WTM("Splash.onResume You have " + G.GPSStackList.size() + " Data Point(s) active.");
     }
 
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // Check which request we're responding to
-        if (requestCode == 123) return;
-    }
-
     public void ADAKCheckPermission() {
         boolean hasPermission = (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
         if (hasPermission) {
@@ -295,9 +290,7 @@ public class Splash extends AppCompatActivity implements HTTPInterface {
     }
 
     public void GetIP() {
-        //The issue here is that if WIFI, we get the local ip (useless).
-        //SQL stored proc asking for ip will give IIS service ip(useless).
-        //Going to the web asking for ip gets the ip but how about all browsers?
+        G.WTL("Splash.GetIP Calling GetIp().");
         G.HTTPAction = "ip";
         G.WebAsync FromTheNet = new G.WebAsync();
         FromTheNet.setListener(this);
@@ -305,13 +298,14 @@ public class Splash extends AppCompatActivity implements HTTPInterface {
     }
 
     public void HTTPCallBack(String myResult) {
-        G.WTL("Splash.HTTPCallBack Start.");
+        G.WTL("Splash.HTTPCallBack() Start.");
         if (G.HTTPAction.equals("ip")) {
+            G.WTL("Splash.GetIP CallBack.");
             if (G.HTTPResponseCode == 200) {
                 WTS("IP=" + G.HTTPResult);
                 G.ip = G.HTTPResult;
             } else
-                G.WTL("Splash.GetIp HTTPResponseCode=" + G.HTTPResponseCode);
+                G.WTL("Splash.HTTPCallBack GetIp HTTPResponseCode=" + G.HTTPResponseCode);
         }
     }
 
@@ -326,7 +320,7 @@ public class Splash extends AppCompatActivity implements HTTPInterface {
 
     public void WTM(String msg) {
         if (msg == null || msg.indexOf(" ") == -1)
-            msg = "Strange Input msg=null or no blank in it!";
+            msg = "Splash.WTM Strange Input msg=null or no blank in it!";
         tvMsg.setText(msg.substring(msg.indexOf(" ") + 1));
         G.WTL(msg);
     }
